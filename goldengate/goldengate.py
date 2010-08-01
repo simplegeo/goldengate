@@ -9,38 +9,25 @@
 
 import httplib2
 import auth
-from http import Request, Response
+from http import Request, Response, clone_url
 from sausagefactory import AuditTrail
 from urlparse import urljoin
 try:
     import setup
 except ImportError:
     print 'Error: missing setup'
-try:
-    import simplejson as json
-except ImportError:
-    import json
 
 
 class Proxy(object):
-    def __init__(self, base_uri=setup.REMOTE_BASE_URI):
+    def __init__(self):
         self.http = httplib2.Http()
-        self.base_uri = base_uri
-
-    def absolute_uri(self, relative_uri):
-        return urljoin(self.base_uri, relative_uri)
 
     def request(self, request):
-        return self.http.request(self.absolute_uri(request.relative_uri), request.method, headers=request.headers, body=request.body)
-
-
-class AWSProxy(Proxy):
-    def request(self, request):
-        return super(AWSProxy, self).request(request)
+        return self.http.request(request.get_url(), request.method, headers=request.headers, body=request.body)
 
 
 class GoldenGate(object):
-    def __init__(self, authenticator=auth.AWSAuthenticator, authorizer=auth.AWSAuthorizer, auditor=AuditTrail, proxy=AWSProxy):
+    def __init__(self, authenticator=auth.AWSAuthenticator, authorizer=auth.AWSAuthorizer, auditor=AuditTrail, proxy=Proxy):
         self.authenticator = authenticator()
         self.authorizer = authorizer()
         self.auditor = auditor()
@@ -49,23 +36,31 @@ class GoldenGate(object):
     def handle(self, request):
         try:
             entity = self.authenticator.authenticate(request)
-            proxy_request = self.authorizer.sign(entity, request)
+            headers = request.headers
+            headers['host'] = setup.REMOTE_HOST
+            proxy_request = self.authorizer.sign(
+                entity, 
+                request._clone(
+                    url=clone_url(request.url, host=setup.REMOTE_HOST),
+                    headers=headers
+                )
+            )
         except auth.UnauthorizedException:
             # HTTP response codes are misnamed. 403 Forbidden really means Unauthorized and
-            # 401 Unauthorized really means unauthenticated. That confusing translation is
-            # done here.
+            # 401 Unauthorized really means unauthenticated. Amazon seems to return 403s for
+            # both though.
             self.auditor.record(None, ['attempted', request.to_dict()])
             return Response('Forbidden', status=403, content_type='text/plain')
         except auth.UnauthenticatedException:
             self.auditor.record(None, ['attempted', request.to_dict()])
-            return Response('Unauthorized', status=403, content_type='text/plain')
+            return Response('Unauthenticated', status=403, content_type='text/plain')
         except Exception:
             try:
                 self.auditor.record(None, ['error', request.to_dict()])
             finally:
                 raise
         else:
-            self.auditor.record(entity, ['applied', request.to_dict()])
+            self.auditor.record(entity, ['applied', [request.to_dict(), proxy_request.to_dict()]])
             return self.response(*self.proxy.request(proxy_request))
 
     def response(self, headers, content):
@@ -83,7 +78,7 @@ class Handler(object):
         self.handler = handler
 
     def __call__(self, environ, start_response):
-        return self.handler.handle(Request(environ, start_response)).send(start_response)
+        return self.handler.handle(Request.from_wsgi(environ, start_response)).send(start_response)
 
 
 application = Handler(GoldenGate())

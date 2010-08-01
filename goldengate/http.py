@@ -3,6 +3,14 @@
 #  - Does Request.relative_uri cover all bases? How 'bout URI fragment IDs?
 
 
+import urllib
+from collections import namedtuple
+try:
+    from urlparse import parse_qs
+except ImportError:
+    from cgi import parse_qs
+
+
 STATUS_CODES = {
     100: 'CONTINUE',
     101: 'SWITCHING PROTOCOLS',
@@ -48,51 +56,100 @@ STATUS_CODES = {
 }
 
 
+def escape(s):
+    return urllib.quote(s, safe='-_~')
+
+
+def urlencode(d):
+    if isinstance(d, dict):
+        d = d.iteritems()
+    return '&'.join(['%s=%s' % (escape(k), escape(v)) for k, v in d])
+
+
+URL = namedtuple('URL', 'scheme host path parameters')
+
+
+def url_from_environ(environ):
+    if environ.get('HTTP_HOST'):
+        host = environ['HTTP_HOST']
+    else:
+        host = environ['SERVER_NAME']
+
+    # Ignoring the distinction between empty query string and no
+    # query string.
+    parameters = parse_qs(environ.get('QUERY_STRING', ''))
+    for k, v in parameters.iteritems():
+        parameters[k] = urllib.unquote(v[0])
+
+    # Ignoring SCRIPT_NAME and URL fragments. 
+    return URL(
+        scheme=environ['wsgi.url_scheme'],
+        host=host,
+        path=environ.get('PATH_INFO', ''),
+        parameters=parameters,
+    )
+
+
+def headers_from_environ(environ):
+    headers = dict([(key[5:].replace('_', '-').lower(), value) 
+                    for key, value in environ.iteritems() if key.startswith('HTTP_')])
+    headers['content-type'] = environ.get('CONTENT_TYPE')
+    if 'CONTENT_LENGTH' in environ:
+        headers['content-length'] = environ['CONTENT_LENGTH']
+    return headers
+
+
+def clone_url(url, **kwargs):
+    opts = {
+        'scheme': url.scheme,
+        'host': url.host,
+        'path': url.path,
+        'parameters': url.parameters,
+    }
+    opts.update(kwargs)
+    return URL(**opts)
+
+
 class Request(object):
-    def __init__(self, environ, start_response):
-        self._environ = environ
-        self._start_response = start_response
-    
-    @property
-    def path(self):
-        return self._environ.get('PATH_INFO', '')
-    
-    @property
-    def query(self):
-        return self._environ.get('QUERY_STRING')
+    def __init__(self, method, url, headers, body, callback):
+        self.method = method.upper()
+        self.url = url
+        self.headers = headers
+        self.body = body
+        self.callback = callback
 
-    @property
-    def relative_uri(self):
-        if self.query is not None:
-            return '?'.join((self.path, self.query))
-        else:
-            return self.path
+    @classmethod
+    def from_wsgi(cls, environ, start_response):
+        return cls(
+            method=environ.get('REQUEST_METHOD', 'GET'),
+            url=url_from_environ(environ),
+            headers=headers_from_environ(environ),
+            body=environ['wsgi.input'].read(),
+            callback=start_response,
+        )
 
-    @property
-    def method(self):
-        return self._environ.get('REQUEST_METHOD', 'GET').upper()
+    def get_url(self):
+        url = self.url.scheme + '://' + self.url.host + self.url.path
+        if self.url.parameters:
+            url += '?' + urlencode(self.url.parameters)
+        return url
 
-    @property
-    def headers(self):
-        headers = dict([(key[5:].replace('_', '-').lower(), value) 
-                        for key, value in self._environ.iteritems() if key.startswith('HTTP_')])
-        headers['content-type'] = self._environ.get('CONTENT_TYPE')
-        return headers
-
-    @property
-    def content_length(self):
-        try:
-            return int(self._environ.get('CONTENT_LENGTH', 0))
-        except ValueError:
-            return 0
-
-    @property
-    def body(self):
-        return self._environ['wsgi.input'].read(self.content_length)
+    def _clone(self, klass=None, **kwargs):
+        if klass is None:
+            klass = self.__class__
+        opts = {
+            'method': self.method,
+            'url': self.url,
+            'headers': self.headers,
+            'body': self.body,
+            'callback': self.callback,
+        }
+        opts.update(kwargs)
+        return klass(**opts)
 
     def to_dict(self):
         return {
-            'relative_uri': self.relative_uri,
+            'url': self.get_url(),
             'method': self.method,
             'headers': self.headers,
             'body': self.body,

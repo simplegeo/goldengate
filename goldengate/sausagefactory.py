@@ -1,6 +1,10 @@
 """
 Things go into sausage factory but they don't come back out.
 """
+try:
+    import simplejson as json
+except ImportError:
+    import json
 
 
 class AuditTrail(object):
