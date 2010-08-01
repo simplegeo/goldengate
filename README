@@ -1,0 +1,3 @@
+Golden Gate is a cloud gateway *whomp whomp*. More generally, it is a broker for an HTTP
+service that applies more granular authentication and authorization policies
+than may be provided by the backend service.
