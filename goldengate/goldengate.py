@@ -13,9 +13,9 @@ from http import Request, Response, clone_url
 from sausagefactory import AuditTrail
 from urlparse import urljoin
 try:
-    import setup
+    import settings
 except ImportError:
-    print 'Error: missing setup'
+    print 'Error: missing settings'
 
 
 class Proxy(object):
@@ -37,11 +37,11 @@ class GoldenGate(object):
         try:
             entity = self.authenticator.authenticate(request)
             headers = request.headers
-            headers['host'] = setup.REMOTE_HOST
+            headers['host'] = settings.REMOTE_HOST
             proxy_request = self.authorizer.sign(
                 entity, 
                 request._clone(
-                    url=clone_url(request.url, host=setup.REMOTE_HOST),
+                    url=clone_url(request.url, host=settings.REMOTE_HOST),
                     headers=headers
                 )
             )
