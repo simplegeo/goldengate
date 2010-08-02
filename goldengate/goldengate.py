@@ -35,33 +35,36 @@ class GoldenGate(object):
 
     def handle(self, request):
         try:
-            entity = self.authenticator.authenticate(request)
-            headers = request.headers
-            headers['host'] = settings.REMOTE_HOST
-            proxy_request = self.authorizer.sign(
-                entity, 
-                request._clone(
-                    url=clone_url(request.url, host=settings.REMOTE_HOST),
-                    headers=headers
+            try:
+                entity = self.authenticator.authenticate(request)
+            except auth.UnauthenticatedException:
+                self.auditor.record(None, ['attempted', request.to_dict()])
+                return Response('Unauthenticated', status=403, content_type='text/plain')
+
+            try:
+                headers = request.headers
+                headers['host'] = settings.REMOTE_HOST
+                proxy_request = self.authorizer.sign(
+                    entity, 
+                    request._clone(
+                        url=clone_url(request.url, host=settings.REMOTE_HOST),
+                        headers=headers
+                    )
                 )
-            )
-        except auth.UnauthorizedException:
-            # HTTP response codes are misnamed. 403 Forbidden really means Unauthorized and
-            # 401 Unauthorized really means unauthenticated. Amazon seems to return 403s for
-            # both though.
-            self.auditor.record(None, ['attempted', request.to_dict()])
-            return Response('Forbidden', status=403, content_type='text/plain')
-        except auth.UnauthenticatedException:
-            self.auditor.record(None, ['attempted', request.to_dict()])
-            return Response('Unauthenticated', status=403, content_type='text/plain')
+            except auth.UnauthorizedException:
+                # HTTP response codes are misnamed. 403 Forbidden really means Unauthorized and
+                # 401 Unauthorized really means unauthenticated. Amazon seems to return 403s for
+                # both though.
+                self.auditor.record(entity, ['attempted', request.to_dict()])
+                return Response('Forbidden', status=403, content_type='text/plain')
+            else:
+                self.auditor.record(entity, ['applied', [request.to_dict(), proxy_request.to_dict()]])
+                return self.response(*self.proxy.request(proxy_request))
         except Exception:
             try:
                 self.auditor.record(None, ['error', request.to_dict()])
             finally:
                 raise
-        else:
-            self.auditor.record(entity, ['applied', [request.to_dict(), proxy_request.to_dict()]])
-            return self.response(*self.proxy.request(proxy_request))
 
     def response(self, headers, content):
         status = int(headers.pop('status'))

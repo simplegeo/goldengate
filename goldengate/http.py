@@ -139,7 +139,7 @@ class Request(object):
             klass = self.__class__
         opts = {
             'method': self.method,
-            'url': self.url,
+            'url': clone_url(self.url),
             'headers': self.headers,
             'body': self.body,
             'callback': self.callback,

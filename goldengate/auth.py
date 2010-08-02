@@ -5,6 +5,8 @@ import time
 import random
 import setup
 
+from policy import Policy
+
 
 # Map of entity => entity's credentials
 CREDENTIALS = [
@@ -49,6 +51,10 @@ class AWSQueryRequest(http.Request):
     mostly used by their various REST APIs.
 
     """
+
+    @property
+    def aws_action(self):
+        return self.url.parameters['Action']
 
     def get_normalized_parameters(self):
         """
@@ -100,7 +106,6 @@ class SignatureMethod(object):
             request.get_normalized_http_path(),
             request.get_normalized_parameters(),
         ))
-        print 'Signing', signature
         return signature
 
     def build_signature(self, request, aws_secret):
@@ -178,11 +183,11 @@ class AWSAuthorizer(object):
         if not entity in [credential[0] for credential in CREDENTIALS]:
             raise UnauthenticatedException()
         else:
-            return True
+            return Policy.for_request(request).grant(entity, request)
 
     def sign(self, entity, request):
-        if self.authorized(entity, request):
-            aws_request = request._clone(klass=AWSQueryRequest)
+        aws_request = request._clone(klass=AWSQueryRequest)
+        if self.authorized(entity, aws_request):
             return aws_request.signed_request(self.signature_method, setup.AWS_KEY, setup.AWS_SECRET)
         else:
             raise UnauthorizedException(entity, request)
