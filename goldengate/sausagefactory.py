@@ -13,13 +13,15 @@ except ImportError:
 class AuditTrail(object):
     signature_pattern = re.compile('Signature=[^&]+')
 
+    @classmethod
+    def sanitize(cls, record):
+        import settings
+        record = re.sub(cls.signature_pattern, 'Signature=XXX', record) # remove Signature, if there is one.
+        return record.replace(settings.AWS_SECRET, 'XXX') # just in case
+
     def format(self, entity, action):
         # Might also want an optional transaction identifier
-        import settings
-        record = json.dumps({'entity': entity, 'action': action})
-        record = re.sub(self.signature_pattern, 'Signature=XXX', record) # remove Signature, if there is one.
-        record = record.replace(settings.AWS_SECRET, 'XXX') # just in case
-        return record
+        return self.sanitize(json.dumps({'entity': entity, 'action': action}))
 
     def record(self, entity, action):
         print self.format(entity, action)

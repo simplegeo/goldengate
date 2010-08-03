@@ -32,7 +32,22 @@ class GoldenGate(object):
             self.auditor = settings.AUDITOR
         self.proxy = proxy()
 
+    def manage(self, request):
+        "Handle Golden Gate management requests."
+        if request.url.path.startswith('/~/cancel/'):
+            uuid = request.url.path[10:]
+            from policy import TimeLockPolicy
+            try:
+                TimeLockPolicy.cancel(uuid)
+            except KeyError:
+                return Response('Not found', status=404, content_type='text/plain')
+            return Response('OK', status=200, content_type='text/plain')
+        return Response('Not found', status=404, content_type='text/plain')
+
     def handle(self, request):
+        if request.url.path.startswith('/~/'):
+            return self.manage(request)
+
         try:
             try:
                 entity = self.authenticator.authenticate(request)

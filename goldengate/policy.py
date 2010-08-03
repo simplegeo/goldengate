@@ -1,5 +1,12 @@
 import time
+import uuid
 from notifications import Notification
+from sausagefactory import AuditTrail
+try:
+    import simplejson as json
+except ImportError:
+    import json
+
 
 def action(action, policy, **kwargs):
     """
@@ -24,6 +31,16 @@ def allow():
 def deny():
     "Helper for constructing a default-deny policy."
     return DenyPolicy(AlwaysMatcher())
+
+
+def render_template(template, context):
+    """
+    Replaces {{ <var> }} with the value of the variable from the context
+    dictionary.
+    """
+    for key, value in context.iteritems():
+        template = template.replace('{{ %s }}' % (key,), value)
+    return template
 
 
 class MissingPolicyException(Exception):
@@ -86,19 +103,32 @@ class TimeLockPolicy(MatcherPolicy):
     request is not cancelled, it will be granted after the lock expires.
 
     """
-    cancelled = False
+    cancelled = {}
 
-    def __init__(self, matcher, lock_duration, notification_broker):
+    def __init__(self, matcher, lock_duration, notification_broker, notification_template):
         self.lock_duration = lock_duration
         self.notification_broker = notification_broker
+        self.notification_template = notification_template
         super(TimeLockPolicy, self).__init__(matcher)
+
+    @classmethod
+    def cancel(cls, request_uuid):
+        print 'Canceling request', request_uuid
+        cls.cancelled[request_uuid] = True
 
     def grant(self, entity, request):
         # Generate UUID, add to list of pending requests, send email with
         # link for cancellation.
-        self.notification_broker.send(Notification(['mjmalone@gmail.com'], 'Time-lock engaged!'))
+        request_uuid = uuid.uuid4().get_hex()
+        message = render_template(self.notification_template, {
+            'request_information': AuditTrail.sanitize(json.dumps(request.to_dict(), indent=4)),
+            'request_execution_time': time.strftime('%a, %d %b %Y %H:%M:%S +0000', time.gmtime(time.time() + self.lock_duration)),
+            'time_lock_duration': str(self.lock_duration/60.0),
+            'request_uuid': request_uuid,
+        })
+        self.notification_broker.send(Notification(['mjmalone@gmail.com'], message))
         time.sleep(self.lock_duration)
-        return not self.cancelled
+        return not self.cancelled.pop(request_uuid, False)
 
 
 class Matcher(object):
