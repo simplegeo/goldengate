@@ -1,2 +1,2 @@
 env/
-goldengate/settings.py
+goldengate/local_settings.py
