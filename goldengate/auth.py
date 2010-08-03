@@ -2,6 +2,7 @@ import hmac
 import base64
 import http
 import time
+import calendar
 import random
 import setup
 
@@ -15,8 +16,11 @@ def _utf8_str(s):
         return str(s)
 
 
+TIME_FORMAT = '%Y-%m-%dT%H:%M:%S'
 def generate_timestamp():
-    return time.strftime('%Y-%m-%dT%H:%M:%S', time.gmtime())
+    return time.strftime(TIME_FORMAT, time.gmtime())
+def parse_timestamp(timestamp):
+    return calendar.timegm(time.strptime(timestamp, TIME_FORMAT))
 
 
 def _are_equal(this, that):
@@ -146,8 +150,19 @@ class AWSAuthenticator(object):
             signature = request.url.parameters['Signature']
             signature_method = request.url.parameters['SignatureMethod']
             signature_version = request.url.parameters['SignatureVersion']
+            timestamp = request.url.parameters['Timestamp'] # TODO: Support Expires instead of / in addition to Timestamp.
         except KeyError:
             raise UnauthenticatedException('missing required signature parameters')
+
+        try:
+            timestamp = parse_timestamp(timestamp)
+        except ValueError:
+            raise UnauthenticatedException('bad timestamp')
+
+        # Timestamp can't be in the future, and can't be older than TIMESTAMP_THRESHOLD.
+        if (timestamp > time.time() or
+            timestamp < (time.time() - self.TIMESTAMP_THRESHOLD)):
+            raise UnauthenticatedException('bad timestamp')
 
         credentials = self.credentials.for_key(aws_key)
         if credentials is None:
