@@ -1,6 +1,9 @@
 """
 Things go into sausage factory but they don't come back out.
 """
+from __future__ import with_statement
+import fcntl
+import re
 try:
     import simplejson as json
 except ImportError:
@@ -8,7 +11,29 @@ except ImportError:
 
 
 class AuditTrail(object):
-    def record(self, entity, action):
+    signature_pattern = re.compile('Signature=[^&]+')
+
+    def format(self, entity, action):
         # Might also want an optional transaction identifier
-        print json.dumps({'entity': entity, 'action': action}, indent=4)
+        import settings
+        record = json.dumps({'entity': entity, 'action': action})
+        record = re.sub(self.signature_pattern, 'Signature=XXX', record) # remove Signature, if there is one.
+        record = record.replace(settings.AWS_SECRET, 'XXX') # just in case
+        return record
+
+    def record(self, entity, action):
+        print self.format(entity, action)
+
+
+class FileAuditTrail(AuditTrail):
+    def __init__(self, filename):
+        self.filename = filename
+
+    def record(self, entity, action):
+        with open(self.filename, 'a+') as log_file:
+            fcntl.lockf(log_file.fileno(), fcntl.LOCK_EX)
+            log_file.write(self.format(entity, action))
+            log_file.write("\n")
+            log_file.flush()
+            fcntl.lockf(log_file.fileno(), fcntl.LOCK_UN)
 

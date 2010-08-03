@@ -27,10 +27,11 @@ class Proxy(object):
 
 
 class GoldenGate(object):
-    def __init__(self, authenticator=auth.AWSAuthenticator, authorizer=auth.AWSAuthorizer, auditor=AuditTrail, proxy=Proxy):
+    def __init__(self, authenticator=auth.AWSAuthenticator, authorizer=auth.AWSAuthorizer, auditor=None, proxy=Proxy):
         self.authenticator = authenticator()
         self.authorizer = authorizer()
-        self.auditor = auditor()
+        if auditor is None:
+            self.auditor = settings.AUDITOR
         self.proxy = proxy()
 
     def handle(self, request):
