@@ -12,11 +12,14 @@ except ImportError:
 
 class AuditTrail(object):
     signature_pattern = re.compile('Signature=[^&]+')
+    authorization_pattern = re.compile('"authorization": "AWS [^:]+:[^"]+"')
 
     @classmethod
     def sanitize(cls, record):
         import settings
+        # HACK HACK HACK
         record = re.sub(cls.signature_pattern, 'Signature=XXX', record) # remove Signature, if there is one.
+        record = re.sub(cls.authorization_pattern, '"authorization": "XXX"', record)
         return record.replace(settings.AWS_SECRET, 'XXX') # just in case
 
     def format(self, entity, action):
