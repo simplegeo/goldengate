@@ -8,12 +8,6 @@ import setup
 from policy import Policy
 
 
-# Map of entity => entity's credentials
-CREDENTIALS = [
-    ('Mike', {'key': 'foo', 'secret': 'bar'}),
-]
-
-
 def _utf8_str(s):
     if isinstance(s, unicode):
         return s.encode('utf-8')
@@ -142,6 +136,9 @@ class AWSAuthenticator(object):
     TIMESTAMP_THRESHOLD = 300 # In seconds, five minutes.
     signature_methods = [SignatureMethod_HMAC_SHA1(), SignatureMethod_HMAC_SHA256()]
 
+    def __init__(self, credentials):
+        self.credentials = credentials
+
     def authenticate(self, request):
         # Returns the authentic identity of the requester.
         try:
@@ -152,21 +149,16 @@ class AWSAuthenticator(object):
         except KeyError:
             raise UnauthenticatedException('missing required signature parameters')
 
-        entity, aws_secret = self.get_key_details(aws_key)
+        credentials = self.credentials.for_key(aws_key)
+        if credentials is None:
+            raise UnauthenticatedException('signature mismatch')
         signer = self.get_signature_method(signature_method, signature_version)
 
-        expected_signature = signer.build_signature(request._clone(klass=AWSQueryRequest), aws_secret)
+        expected_signature = signer.build_signature(request._clone(klass=AWSQueryRequest), credentials.secret)
         if _are_equal(signature, expected_signature):
-            return entity
+            return credentials.entity
         else:
             raise UnauthenticatedException('signature mismatch')
-
-    @classmethod
-    def get_key_details(cls, aws_key):
-        for entity, credentials in CREDENTIALS:
-            if credentials['key'] == aws_key:
-                return entity, credentials['secret']
-        raise UnauthenticatedException('signature mismatch')
 
     @classmethod
     def get_signature_method(cls, name, version):
@@ -180,10 +172,7 @@ class AWSAuthorizer(object):
     signature_method = SignatureMethod_HMAC_SHA256()
 
     def authorized(self, entity, request):
-        if not entity in [credential[0] for credential in CREDENTIALS]:
-            raise UnauthenticatedException()
-        else:
-            return Policy.for_request(request).grant(entity, request)
+        return Policy.for_request(request).grant(entity, request)
 
     def sign(self, entity, request):
         aws_request = request._clone(klass=AWSQueryRequest)

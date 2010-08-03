@@ -16,6 +16,7 @@ try:
     import settings
 except ImportError:
     print 'Error: missing settings'
+from credentials import StaticCredentialStore, Credential
 
 
 class Proxy(object):
@@ -28,7 +29,8 @@ class Proxy(object):
 
 class GoldenGate(object):
     def __init__(self, authenticator=auth.AWSAuthenticator, authorizer=auth.AWSAuthorizer, auditor=None, proxy=Proxy):
-        self.authenticator = authenticator()
+        credentials = [Credential(*credential) for credential in settings.CREDENTIALS]
+        self.authenticator = authenticator(StaticCredentialStore(credentials))
         self.authorizer = authorizer()
         if auditor is None:
             self.auditor = settings.AUDITOR
