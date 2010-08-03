@@ -2,10 +2,6 @@
 # service that applies more granular authentication and authorization policies
 # than may be provided by the backend service.
 
-# To do:
-#  - Forbidden / unauthorized responses should be in the correct format.
-#  - Rewrite 302s to make clients go through proxy (setup option?).
-
 
 import httplib2
 import auth
@@ -28,7 +24,7 @@ class Proxy(object):
 
 
 class GoldenGate(object):
-    def __init__(self, authenticator=auth.AWSAuthenticator, authorizer=auth.AWSAuthorizer, auditor=None, proxy=Proxy):
+    def __init__(self, authenticator=auth.AWSAuthenticator, authorizer=lambda: auth.AWSAuthorizer(settings.AWS_KEY, settings.AWS_SECRET), auditor=None, proxy=Proxy):
         credentials = [Credential(*credential) for credential in settings.CREDENTIALS]
         self.authenticator = authenticator(StaticCredentialStore(credentials))
         self.authorizer = authorizer()

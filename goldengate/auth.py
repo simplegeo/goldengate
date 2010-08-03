@@ -4,7 +4,6 @@ import http
 import time
 import calendar
 import random
-import setup
 
 from policy import Policy
 
@@ -186,13 +185,17 @@ class AWSAuthenticator(object):
 class AWSAuthorizer(object):
     signature_method = SignatureMethod_HMAC_SHA256()
 
+    def __init__(self, aws_key, aws_secret):
+        self.aws_key = aws_key
+        self.aws_secret = aws_secret
+
     def authorized(self, entity, request):
         return Policy.for_request(request).grant(entity, request)
 
     def sign(self, entity, request):
         aws_request = request._clone(klass=AWSQueryRequest)
         if self.authorized(entity, aws_request):
-            return aws_request.signed_request(self.signature_method, setup.AWS_KEY, setup.AWS_SECRET)
+            return aws_request.signed_request(self.signature_method, self.aws_key, self.aws_secret)
         else:
             raise UnauthorizedException(entity, request)
 
