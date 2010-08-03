@@ -1,16 +1,19 @@
+import time
+from notifications import Notification
 
-
-def action(action, allow):
+def action(action, policy, **kwargs):
     """
     Helper for constructing AWS policies. The policy will match AWS request that
-    match a particular action. If allow is True the request will be granted. If
-    it's False it will be denied.
+    match a particular action. If policy is True the request will be granted. If
+    it's False it will be denied. Otherwise, policy is assumed to be a callable
+    that will return a Policy object.
 
     """
-    if allow:
-        return AllowPolicy(AWSActionMatcher(action))
-    else:
-        return DenyPolicy(AWSActionMatcher(action))
+    if policy is True:
+        policy = AllowPolicy
+    elif policy is False:
+        policy = DenyPolicy
+    return policy(AWSActionMatcher(action), **kwargs)
 
 
 def allow():
@@ -47,13 +50,18 @@ class Policy(object):
         raise MissingPolicyException
 
 
-class BooleanPolicy(object):
-    def __init__(self, allow, matcher):
-        self.allow = allow
+class MatcherPolicy(object):
+    def __init__(self, matcher):
         self.matcher = matcher
 
     def applies_to(self, request):
         return self.matcher.matches(request)
+
+
+class BooleanPolicy(MatcherPolicy):
+    def __init__(self, allow, matcher):
+        self.allow = allow
+        super(BooleanPolicy, self).__init__(matcher)
 
     def grant(self, entity, request):
         return self.allow
@@ -67,6 +75,30 @@ class AllowPolicy(BooleanPolicy):
 class DenyPolicy(BooleanPolicy):
     def __init__(self, matcher):
         return super(DenyPolicy, self).__init__(False, matcher)
+
+
+class TimeLockPolicy(MatcherPolicy):
+    """
+    A time-lock policy queues requests for execution after some time has
+    elapsed. During the time-lock phase of the request a notification will be
+    sent to other parties who may be interested in the request. Those parties
+    may decide to cancel the request at any period during the time-lock. If the
+    request is not cancelled, it will be granted after the lock expires.
+
+    """
+    cancelled = False
+
+    def __init__(self, matcher, lock_duration, notification_broker):
+        self.lock_duration = lock_duration
+        self.notification_broker = notification_broker
+        super(TimeLockPolicy, self).__init__(matcher)
+
+    def grant(self, entity, request):
+        # Generate UUID, add to list of pending requests, send email with
+        # link for cancellation.
+        self.notification_broker.send(Notification(['mjmalone@gmail.com'], 'Time-lock engaged!'))
+        time.sleep(self.lock_duration)
+        return not self.cancelled
 
 
 class Matcher(object):
