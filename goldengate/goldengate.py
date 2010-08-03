@@ -45,7 +45,7 @@ class GoldenGate(object):
                 return Response('Unauthenticated', status=403, content_type='text/plain')
 
             try:
-                headers = request.headers
+                headers = request.headers.copy()
                 headers['host'] = settings.REMOTE_HOST
                 proxy_request = self.authorizer.sign(
                     entity, 

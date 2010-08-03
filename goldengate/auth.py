@@ -80,7 +80,7 @@ class AWSQueryRequest(http.Request):
         return self.url.path if self.url.path else '/'
 
     def signed_request(self, signature_method, aws_key, aws_secret):
-        parameters = self.url.parameters
+        parameters = self.url.parameters.copy()
         parameters['AWSAccessKeyId'] = aws_key
         parameters['SignatureVersion'] = signature_method.version
         parameters['SignatureMethod'] = signature_method.name

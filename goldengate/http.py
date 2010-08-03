@@ -114,7 +114,7 @@ class Request(object):
     def __init__(self, method, url, headers, body, callback):
         self.method = method.upper()
         self.url = url
-        self.headers = headers
+        self.headers = headers.copy()
         self.body = body
         self.callback = callback
 
