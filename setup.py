@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 import os
-from distutils.core import setup
+from setuptools import setup
 setup(
     name='goldengate',
     version='0.1',
@@ -13,8 +13,11 @@ setup(
     packages=['goldengate'],
     provides=['goldengate'],
     requires=[
-        'gunicorn',
-        'eventlet',
         'httplib2',
-    ]
+    ],
+    entry_points = {
+        'console_scripts': [
+            'gg-new-credentials = goldengate:generate_credentials',
+        ]
+    }
 )
