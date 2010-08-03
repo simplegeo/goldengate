@@ -1,8 +1,3 @@
-# TODO:
-#  - Response object assumes utf-8. Is that ok?
-#  - Does Request.relative_uri cover all bases? How 'bout URI fragment IDs?
-
-
 import urllib
 from collections import namedtuple
 try:
