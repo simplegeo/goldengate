@@ -8,19 +8,21 @@ except ImportError:
     import json
 
 
-def action(action, policy, **kwargs):
+def action(action, allow, **kwargs):
     """
     Helper for constructing AWS policies. The policy will match AWS request that
-    match a particular action. If policy is True the request will be granted. If
-    it's False it will be denied. Otherwise, policy is assumed to be a callable
+    match a particular action. If allow is True the request will be granted. If
+    it's False it will be denied. Otherwise, allow is assumed to be a callable
     that will return a Policy object.
 
     """
-    if policy is True:
-        policy = AllowPolicy
-    elif policy is False:
-        policy = DenyPolicy
-    return policy(AWSActionMatcher(action), **kwargs)
+    matcher = AWSActionMatcher(action)
+    if allow is True:
+        return AllowPolicy(matcher, **kwargs)
+    elif allow is False:
+        return DenyPolicy(matcher, **kwargs)
+    else:
+        return allow(matcher, **kwargs)
 
 
 def allow():
