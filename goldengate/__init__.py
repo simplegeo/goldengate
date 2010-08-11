@@ -3,7 +3,8 @@ __date__ = '30 July 2010'
 __author__ = 'Mike Malone'
 __credits__ = 'SimpleGeo'
 
-from goldengate import GoldenGate, application
+
+from goldengate import application
 
 
 RANDOM_TOKEN_STRING_LENGTH = 16
@@ -18,3 +19,4 @@ def random_token(length=RANDOM_TOKEN_STRING_LENGTH, alphabet=RANDOM_TOKEN_ALPHAB
 
 def generate_credentials():
     print ', '.join([random_token(), random_token(32)])
+
