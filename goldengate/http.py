@@ -64,11 +64,17 @@ def urlencode(d):
 URL = namedtuple('URL', 'scheme host path parameters')
 
 
+STANDARD_PORTS = {
+    'http': '80',
+    'https': '443',
+}
 def url_from_environ(environ):
     if environ.get('HTTP_HOST'):
         host = environ['HTTP_HOST']
     else:
         host = environ['SERVER_NAME']
+        if STANDARD_PORTS.get(environ['wsgi.url_scheme']) != environ['SERVER_PORT']:
+            host += ':' + environ['SERVER_PORT']
 
     # Ignoring the distinction between empty query string and no
     # query string.
