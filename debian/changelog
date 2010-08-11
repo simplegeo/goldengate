@@ -1,3 +1,9 @@
+goldengate (1.0.0) lucid; urgency=low
+
+  * UNRELEASED
+
+ -- SimpleGeo Nerds <nerds@simplegeo.com>  Wed, 11 Aug 2010 01:46:30 +0000
+
 goldengate (1.0.0) unstable; urgency=low
 
   * Initial Release.
