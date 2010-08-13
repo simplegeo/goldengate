@@ -30,16 +30,17 @@ def _are_equal(this, that):
     return (this[:rot] + this[rot:]) == (that[:rot] + that[rot:])
 
 
-class UnauthorizedException(Exception):
-    def __init__(self, entity, request):
+class UnauthorizedException(http.HTTPException):
+    type = 'unauthorized'
+    def __init__(self, entity, body=''):
         self.entity = entity
-        self.request = request
-        super(UnauthorizedException, self).__init__("%s is not authorized to make request." % (entity,))
+        super(UnauthorizedException, self).__init__(403, body=body)
 
 
-class UnauthenticatedException(Exception):
-    def __init__(self, details='<no details>'):
-        super(UnauthenticatedException, self).__init__("Request requires authentication (%s)." % (details,))
+class UnauthenticatedException(http.HTTPException):
+    type = 'unauthenticated'
+    def __init__(self, body=''):
+        super(UnauthenticatedException, self).__init__(401, body=body)
 
 
 class AWSQueryRequest(http.Request):
@@ -151,7 +152,7 @@ class AWSAuthenticator(object):
             signature_version = request.url.parameters['SignatureVersion']
             timestamp = request.url.parameters['Timestamp'] # TODO: Support Expires instead of / in addition to Timestamp.
         except KeyError:
-            raise UnauthenticatedException('missing required signature parameters')
+            raise UnauthenticatedException('missing required signature parameters.')
 
         try:
             timestamp = parse_timestamp(timestamp)
@@ -197,5 +198,5 @@ class AWSAuthorizer(object):
         if self.authorized(entity, aws_request):
             return aws_request.signed_request(self.signature_method, self.aws_key, self.aws_secret)
         else:
-            raise UnauthorizedException(entity, request)
+            raise UnauthorizedException(entity)
 

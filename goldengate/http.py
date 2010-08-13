@@ -51,6 +51,24 @@ STATUS_CODES = {
 }
 
 
+class HTTPException(Exception):
+    """
+    An HTTPException indicates some sort of HTTP error condition (probably a
+    4XX) that should be returned as an HTTP response to the client.
+
+    """
+    type = 'error'
+
+    def __init__(self, status=400, headers=None, body=''):
+        self.status = status
+        self.headers = headers if headers is not None else []
+        self.body = body
+        super(HTTPException, self).__init__(body)
+
+    def to_response(self):
+        return Response(self.status, self.headers, self.body)
+
+
 def escape(s):
     return urllib.quote(s, safe='-_~')
 
