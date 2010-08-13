@@ -50,8 +50,6 @@ class MissingPolicyException(Exception):
 
 
 class Policy(object):
-    policies = []
-
     def applies_to(self, request):
         """Returns true if this policy applies to the request."""
         raise NotImplementedError
