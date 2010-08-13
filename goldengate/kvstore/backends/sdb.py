@@ -9,7 +9,7 @@ Example configuration for Django settings:
 
 
 from base import BaseStorage, InvalidKeyValueStoreBackendError
-from kvstore import ImproperlyConfigured
+from goldengate.kvstore import ImproperlyConfigured
 try:
     import simplejson as json
 except ImportError:
@@ -43,12 +43,12 @@ class StorageClass(BaseStorage):
     def set(self, key, value):
         if isinstance(value, unicode):
             value = value.encode('utf-8')
-        self._domain[_utf8_str(key)] = {'value': simplejson.dumps(value)}
+        self._domain[_utf8_str(key)] = {'value': json.dumps(value)}
 
     def get(self, key):
         val = self._domain[_utf8_str(key)].get('value', None)
         if isinstance(val, basestring):
-            return simplejson.loads(val)
+            return json.loads(val)
         else:
             return val
 

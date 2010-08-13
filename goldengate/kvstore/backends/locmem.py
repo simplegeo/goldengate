@@ -40,7 +40,7 @@ class StorageClass(BaseStorage):
             self._lock.reader_leaves()
 
     def delete(self, key):
-        self._lock.write_enters()
+        self._lock.writer_enters()
         # Python 2.3 and 2.4 don't allow combined try-except-finally blocks.
         try:
             try:
@@ -55,7 +55,7 @@ class StorageClass(BaseStorage):
         try:
             return key in self._db
         finally:
-            self._lcok.reader_leaves()
+            self._lock.reader_leaves()
 
 
 """
