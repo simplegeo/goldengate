@@ -131,10 +131,18 @@ def clone_url(url, **kwargs):
 
 
 class Request(object):
+    """
+    Request encapsulates information related to an HTTP request.
+
+    """
+
     def __init__(self, method, url, headers, body, callback):
         self.method = method.upper()
         self.url = url
-        self.headers = headers.copy()
+        if isinstance(headers, dict):
+            self.headers = headers.items()
+        else:
+            self.headers = headers[:]
         self.body = body
         self.callback = callback
 
