@@ -124,7 +124,7 @@ def clone_url(url, **kwargs):
         'scheme': url.scheme,
         'host': url.host,
         'path': url.path,
-        'parameters': url.parameters,
+        'parameters': url.parameters.copy(),
     }
     opts.update(kwargs)
     return URL(**opts)
