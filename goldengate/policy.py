@@ -60,9 +60,11 @@ class Policy(object):
         raise NotImplementedError
 
     @classmethod
-    def for_request(self, request):
-        import settings
-        for policy in getattr(settings, 'POLICIES', []):
+    def for_request(self, request, policies=None):
+        if policies is None:
+            import policies as _policies
+            policies = getattr(_policies, 'POLICIES', [])
+        for policy in policies:
             if policy.applies_to(request):
                 return policy
         raise MissingPolicyException
