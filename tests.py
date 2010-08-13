@@ -8,7 +8,10 @@ try:
     from cStringIO import StringIO
 except ImportError:
     from StringIO import StringIO
-from goldengate import goldengate, http, auth
+from goldengate import goldengate, http, auth, policy, kvstore
+
+
+SIMPLEDB_TEST_DOMAIN = 'goldengatetests' # This has to be created already.
 
 
 class StartResponse(object):
@@ -305,5 +308,77 @@ class AuthTests(GGTestCase):
         self.assertEquals(exception.type, 'unauthenticated')
 
 
+class PolicyTests(GGTestCase):
+    def test_missing_policy(self):
+        request = http.Request('get', 'http://example.com/', [], '', StartResponse())
+        self.assertRaises(policy.MissingPolicyException, policy.Policy.for_request, request, [])
+
+
+class KVStoreTests(unittest.TestCase):
+    def test_bad_backend_uri_raises(self):
+        self.assertRaises(kvstore.InvalidKeyValueStoreBackend, kvstore.get_kvstore, '')
+
+    def test_locmem_backend_uri_returns_locmem_backend(self):
+        backend = kvstore.get_kvstore('locmem://')
+        self.assertTrue(isinstance(backend, kvstore.backends.locmem.StorageClass))
+
+
+class KVStoreBackendTests(object):
+    """
+    Abstract test for kvstore backends. Subclass this and set backend for each
+    backend you want to test.
+
+    """
+
+    @property
+    def kvstore(self):
+        if 'kvstore' not in self.__dict__:
+            self.__dict__['kvstore'] = kvstore.get_kvstore(self.backend)
+        return self.__dict__['kvstore']
+
+    def wait(self):
+        # Some storage backends aren't strongly consistent. This method is 
+        # called after any operation that may operations that modify data.
+        # Do whatcha need to.
+        pass
+
+    def test_get_nonexistent_key_returns_none(self):
+        self.assertFalse(self.kvstore.has_key('__not_there__'))
+        self.assertTrue(self.kvstore.get('__not_there__') is None)
+
+    def test_set_and_get(self):
+        self.kvstore.set('name', 'beezlebum')
+        self.wait()
+        self.assertEquals(self.kvstore.get('name'), 'beezlebum')
+
+    def test_deleted_keys_are_gone(self):
+        self.kvstore.set('_', True)
+        self.wait()
+        self.assertTrue(self.kvstore.has_key('_'))
+        self.kvstore.delete('_')
+        self.wait()
+        self.assertFalse(self.kvstore.has_key('_'))
+        self.assertTrue(self.kvstore.get('_') is None)
+
+
+# Check for dependencies for each backend, ignore tests if they're not
+# installed.
+
+
+class LocalMemoryKVStoreTests(unittest.TestCase, KVStoreBackendTests):
+    backend = 'locmem://'
+
+
+class SimpleDBKVStoreTests(unittest.TestCase, KVStoreBackendTests):
+    from goldengate import settings
+    backend = 'simpledb://' + SIMPLEDB_TEST_DOMAIN + '?aws_access_key=' + settings.AWS_KEY + '&aws_secret_access_key=' + settings.AWS_SECRET
+
+    def wait(self):
+        # TODO: Use SimpleDB consistency levels instead of sleeping.
+        import time
+        time.sleep(2)
+
+
 if __name__ == '__main__':
     unittest.main()
+
