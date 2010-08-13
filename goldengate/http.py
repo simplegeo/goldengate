@@ -112,7 +112,8 @@ def url_from_environ(environ):
 def headers_from_environ(environ):
     headers = dict([(key[5:].replace('_', '-').lower(), value) 
                     for key, value in environ.iteritems() if key.startswith('HTTP_')])
-    headers['content-type'] = environ.get('CONTENT_TYPE')
+    if 'CONTENT_TYPE' in environ:
+        headers['content-type'] = environ['CONTENT_TYPE']
     if 'CONTENT_LENGTH' in environ:
         headers['content-length'] = environ['CONTENT_LENGTH']
     return headers
