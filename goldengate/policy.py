@@ -1,7 +1,7 @@
 import time
 import uuid
-from notifications import Notification
-from sausagefactory import AuditTrail
+from .notifications import Notification
+from .sausagefactory import AuditTrail
 try:
     import simplejson as json
 except ImportError:
