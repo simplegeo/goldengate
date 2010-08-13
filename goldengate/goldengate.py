@@ -26,7 +26,9 @@ class Proxy(object):
         self.http = httplib2.Http()
 
     def request(self, request):
-        return self.http.request(request.get_url(), request.method, headers=request.headers, body=request.body)
+        response, content = self.http.request(request.get_url(), request.method, headers=request.headers, body=request.body)
+        status = int(response.pop('status'))
+        return Response(status, response, content)
 
 
 class GoldenGate(object):

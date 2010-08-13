@@ -185,34 +185,30 @@ class Request(object):
 
 
 class Response(object):
-    headers = []
-    charset = 'utf8'
-    
-    def __init__(self, output, status=200, content_type='application/x-www-form-urlencoded', headers=None):
-        self.output = output
+    """
+    A response object wraps a status, a list of headers, and a response body. It
+    also has a send method that accepts a WSGI-stype start_response callable
+    which it immediately calls with the status line and headers, and returns the
+    response body.
+
+    """
+
+    def __init__(self, status=200, headers=None, body=''):
         self.status = status
-        if ';' in content_type:
-            encoding = content_type.split(';')
-            assert len(encoding) == 2
-            self.content_type = encoding[0].strip()
-            self.charset = encoding[1].strip()
-        else:
-            self.content_type = content_type
-        if headers is not None:
-            self.headers = headers
+        self.headers = headers if headers is not None else []
+        self.body = body
 
     def send(self, start_response):
         status = '%d %s' % (self.status, STATUS_CODES.get(self.status))
-        headers = Response.encode_headers([('content-type', '%s; charset=%s' % (self.content_type, self.charset))] + self.headers)
-        start_response(status, headers)
-        if isinstance(self.output, unicode):
-            return self.output.encode(self.charset)
+        start_response(status, self.headers)
+        if isinstance(self.body, unicode):
+            return self.body.encode(self.charset)
         else:
-            return self.output
+            return self.body
 
     @classmethod
     def encode_headers(cls, headers):
-        # Headers must be ascii.
+        "Properly encode a dict of headers. They must be ascii."
         def _encode(data):
             if isinstance(data, unicode):
                 return data.encode('us-ascii')
