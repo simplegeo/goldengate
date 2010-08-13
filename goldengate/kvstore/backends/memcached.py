@@ -11,13 +11,17 @@ Example configuration for Django settings:
 
 from base import BaseStorage, InvalidKeyValueStoreBackendError
 
+# Try pylibmc, cmemcache, and memcache in that order.
 try:
-    import cmemcache as memcache
+    import pylibmc as memcache
 except ImportError:
     try:
-        import memcache
-    except:
-        raise InvalidKeyValueStoreBackendError("Memcached key-value store backend requires either the 'memcache' or 'cmemcache' library")
+        import cmemcache as memcache
+    except ImportError:
+        try:
+            import memcache
+        except:
+            raise InvalidKeyValueStoreBackendError("Memcached key-value store backend requires `pylibmc`, `memcache`, or `cmemcache` package.")
 
 
 def _utf8_str(s):
