@@ -12,6 +12,7 @@ from goldengate import goldengate, http, auth, policy, kvstore
 
 
 SIMPLEDB_TEST_DOMAIN = 'goldengatetests' # This has to be created already.
+MEMCACHED_TEST_HOST = 'localhost:11211'
 
 
 class StartResponse(object):
@@ -361,12 +362,16 @@ class KVStoreBackendTests(object):
         self.assertTrue(self.kvstore.get('_') is None)
 
 
-# Check for dependencies for each backend, ignore tests if they're not
-# installed.
+# TODO: Check for dependencies for each backend, ignore tests if they're
+# not installed.
 
 
 class LocalMemoryKVStoreTests(unittest.TestCase, KVStoreBackendTests):
     backend = 'locmem://'
+
+
+class MemcachedKVStoreTests(unittest.TestCase, KVStoreBackendTests):
+    backend = 'memcached://' + MEMCACHED_TEST_HOST
 
 
 class SimpleDBKVStoreTests(unittest.TestCase, KVStoreBackendTests):
