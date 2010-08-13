@@ -1,3 +1,87 @@
-Golden Gate is a cloud gateway *whomp whomp*. More generally, it is a broker for an HTTP
-service that applies more granular authentication and authorization policies
-than may be provided by the backend service.
+Golden Gate is a cloud gateway *whomp whomp*. More specifically, it is a broker
+for an HTTP service that applies more granular authentication and authorization
+policies than may be provided by the backend service. It's been written to
+manage access to Amazon's EC2 API, but with an eye towards other applications.
+Adding support for some other RESTish API with token-based auth (e.g., OAuth)
+should be pretty painless.
+
+Golden Gate does not use SSL. If you're transmitting sensitive information or
+need more robust replay prevention you should configure Golden Gate to listen
+only on localhost and proxy traffic through a reverse proxy that can do SSL.
+
+Authorization Policies
+----------------------
+
+Allow: The default, pass everything through to the backing web service. If this
+is the only rule you have enabled, Golden Gate basically acts as a reverse proxy
+that issues its own credentials its own credentials, applies real credentials
+for backend requests, and keeps an audit trail.
+
+Deny: The other default, deny everything.
+
+TimeLock: Allow the request, but only after some time period has passed. Before
+the timer starts a notification is broadcast, informing others that the request
+is going to be applied. Any person who receives this notification has the
+opportunity to cancel the request before the time-lock expires.
+
+TwoPerson: Allow the request, but only after some other entity has approved it.
+
+Backends
+--------
+
+Memory
+
+SimpleDB
+
+Custom: just need get, set, and delete (should be easy to write for any DHT)
+
+Running Golden Gate
+-------------------
+
+Golden Gate is a WSGI application that uses straightline blocking code to 
+communicate with the backing web service and to block threads while waiting for
+time-locks to expire or for a second person to authorize a request. If you need
+to handle multiple simultaneous requests you should use a WSGI container that
+can magically async-ify these blocking operations. Gunicorn with an async
+driver like eventlet or gevent works pretty well for this:
+
+    $ gunicorn -kegg:gunicorn#eventlet -w4 goldengate:application
+
+Sausage Factory
+---------------
+
+The sausage factory manages Golden Gate's audit trail. All operations that are
+performed by Golden Gate on behalf of some entity are recorded in an "append
+only" log. Scare quotes because it's not _really_ append only unless you set
+things up so that it is! For the file system audit trail you'll need a
+write-only filesystem. Have fun with that. For the S3 audit trail you can turn
+on S3 versioning and multifactor authentication for deletes. Then eat the
+multi-factor auth fob. Or give the fob to one person and the account password to
+another. Either way works.
+
+Notifications
+-------------
+
+For the time-lock or two-person integrity policies to work effectively you'll
+need to configure some sort of notification mechanism. Right now the only
+available notification mechanism is email.
+
+Command Line Tools
+------------------
+
+gg-new-credentials [entity]: generates a random token key and secret for an entity.
+
+gg-approve-request <request uuid> <key> <secret>: approve a request that uses
+    the two-person integrity security policy.
+
+Configuring AWS Tools
+---------------------
+
+The EC2 command-line tools that Amazon provides will not work with Golden Gate
+because they use the EC2 SOAP API and WS-Security which Golden Gate does not
+support. Any tools that use the token-based authentication mechanism that can
+be configured to use a custom endpoint URL should work with Golden Gate.
+
+Boto: example with boto.cfg.
+  
+   $ export BOTO_CONFIG=`pwd`/boto.cfg
