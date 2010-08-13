@@ -296,6 +296,88 @@ class HttpTests(GGTestCase):
         self.assertEquals(exception.type, 'error')
 
 
+class AWSRequestTests(GGTestCase):
+    scheme = 'http'
+    host = 'example.com:8000'
+    path = '/'
+    access_key = 'foo'
+    signature_version = '2'
+    timestamp = '2010-08-12T00:00:05'
+    signature_method = 'HmacSHA256'
+    version = '2010-06-15'
+    signature = 'XXX'
+    action = 'DescribeInstances'
+
+    def setUp(self):
+        self.input = WSGIInput()
+
+    @property
+    def environ(self):
+        return {
+            'PATH_INFO': self.path, 
+            'REQUEST_METHOD': 'POST', 
+            'QUERY_STRING': urllib.urlencode([
+                ('SignatureVersion', self.signature_version),
+                ('AWSAccessKeyId', self.access_key),
+                ('Timestamp', self.timestamp),
+                ('SignatureMethod', self.signature_method),
+                ('Version', self.version),
+                ('Signature', self.signature),
+                ('Action', self.action),
+            ]),
+            'HTTP_HOST': self.host, 
+            'CONTENT_TYPE': '',
+            'wsgi.url_scheme': self.scheme,
+            'wsgi.input': self.input,
+        }
+
+    def test_action(self):
+        request = auth.aws.Request.from_wsgi(self.environ, StartResponse())
+        self.assertEquals(request.aws_action, self.action)
+
+    def test_normalized_parameters(self):
+        request = auth.aws.Request.from_wsgi(self.environ, StartResponse())
+        parameters = request.get_normalized_parameters()
+        self.assertEquals(parameters, urllib.urlencode([
+            ('AWSAccessKeyId', self.access_key),
+            ('Action', self.action),
+            ('SignatureMethod', self.signature_method),
+            ('SignatureVersion', self.signature_version),
+            ('Timestamp', self.timestamp),
+            ('Version', self.version)
+        ]))
+
+    def test_normalized_http_method(self):
+        request = auth.aws.Request.from_wsgi(self.environ, StartResponse())
+        self.assertEquals(request.get_normalized_http_method(), 'POST')
+
+    def test_normalized_http_host(self):
+        request = auth.aws.Request.from_wsgi(self.environ, StartResponse())
+        self.assertEquals(request.get_normalized_http_host(), self.host)
+
+    def test_normalized_http_path(self):
+        request = auth.aws.Request.from_wsgi(self.environ, StartResponse())
+        self.assertEquals(request.get_normalized_http_path(), '/')
+        request.url = http.clone_url(request.url, path='')
+        self.assertEquals(request.get_normalized_http_path(), '/')
+        request.url = http.clone_url(request.url, path='/foo/bar/')
+        self.assertEquals(request.get_normalized_http_path(), '/foo/bar/')
+        request.url = http.clone_url(request.url, path='/foo/bar')
+        self.assertEquals(request.get_normalized_http_path(), '/foo/bar')
+
+    def test_signed_request(self):
+        for signature_method in [auth.aws.SignatureMethod_HMAC_SHA1(), auth.aws.SignatureMethod_HMAC_SHA256()]:
+            request = auth.aws.Request.from_wsgi(self.environ, StartResponse())
+            signed = request.signed_request(signature_method, 'foo', 'bar')
+            self.assertEquals(signed.url.parameters['AWSAccessKeyId'], 'foo')
+            self.assertEquals(signed.url.parameters['SignatureVersion'], signature_method.version)
+            self.assertEquals(signed.url.parameters['SignatureMethod'], signature_method.name)
+            self.assertAlmostEquals(auth.aws.parse_timestamp(signed.url.parameters['Timestamp']), int(time.time()))
+            self.assertEquals(signed.url.parameters['Signature'], signature_method.build_signature(signed, 'bar'))
+            self.assertEquals(signed.url.parameters['Action'], request.url.parameters['Action'])
+            self.assertEquals(signed.url.parameters['Version'], request.url.parameters['Version'])
+
+
 class AuthTests(GGTestCase):
     def test_unauthorized_exception(self):
         exception = auth.UnauthorizedException('dereks_mom@example.com', 'a message')
