@@ -4,6 +4,7 @@ Tests are good.
 
 import unittest
 import urllib
+import time
 try:
     from cStringIO import StringIO
 except ImportError:
@@ -45,12 +46,16 @@ class MockAuthorizer(object):
 
 
 class MockAuthenticator(object):
+    authenticated = True
     entity = object()
     def __init__(self, credentials):
         self.credentials = credentials
     def authenticate(self, request):
         self.request = request
-        return self.entity
+        if self.authenticated:
+            return self.entity
+        else:
+            raise auth.UnauthenticatedException(self.entity)
 
 
 class MockAuditor(object):
@@ -101,13 +106,13 @@ class GGTestCase(unittest.TestCase):
 
 class GoldenGateTests(GGTestCase):
     def setUp(self):
+        url = http.URL('http', 'example.com', '/foo/bar/', {'monkey': 'wrench'})
+        self.request = http.Request('get', url, {'sups': 'word'}, '', StartResponse())
         self.goldengate = goldengate.GoldenGate(authenticator=MockAuthenticator, authorizer=MockAuthorizer, auditor=MockAuditor, proxy=MockProxy)
 
     def test_request(self):
-        url = http.URL('http', 'example.com', '/foo/bar/', {'monkey': 'wrench'})
-        request = http.Request('get', url, {'sups': 'word'}, '', StartResponse())
-        response = self.goldengate.handle(request)
-        self.assertGoldenGateRequestOk(self.goldengate, request, response)
+        response = self.goldengate.handle(self.request)
+        self.assertGoldenGateRequestOk(self.goldengate, self.request, response)
 
     def test_handler(self):
         class FakeResponse(object):
@@ -129,6 +134,14 @@ class GoldenGateTests(GGTestCase):
         request = http.Request.from_wsgi(environ, start_response)
         handler(environ, start_response)
         self.assertGoldenGateRequestOk(self.goldengate, request, response)
+
+    def test_unauthorized_request(self):
+        self.goldengate.authorizer.authorized = False
+        self.assertRaises(auth.UnauthorizedException, self.goldengate.handle, self.request)
+
+    def test_unauthenticated_request(self):
+        self.goldengate.authenticator.authenticated = False
+        self.assertRaises(auth.UnauthenticatedException, self.goldengate.handle, self.request)
 
 
 class HttpTests(GGTestCase):
