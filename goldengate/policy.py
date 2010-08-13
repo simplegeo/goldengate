@@ -6,6 +6,7 @@ try:
     import simplejson as json
 except ImportError:
     import json
+from kvstore import models
 
 
 def action(action, allow, **kwargs):
@@ -94,6 +95,11 @@ class DenyPolicy(BooleanPolicy):
         return super(DenyPolicy, self).__init__(False, matcher)
 
 
+class TimeLock(models.Model):
+    id = models.Field(pk=True)
+    cancelled = models.Field(default=False)
+
+
 class TimeLockPolicy(MatcherPolicy):
     """
     A time-lock policy queues requests for execution after some time has
@@ -103,7 +109,6 @@ class TimeLockPolicy(MatcherPolicy):
     request is not cancelled, it will be granted after the lock expires.
 
     """
-    cancelled = {}
 
     def __init__(self, matcher, lock_duration, notification_broker, notification_template):
         self.lock_duration = lock_duration
@@ -114,12 +119,18 @@ class TimeLockPolicy(MatcherPolicy):
     @classmethod
     def cancel(cls, request_uuid):
         print 'Canceling request', request_uuid
-        cls.cancelled[request_uuid] = True
+        request = TimeLock.get(request_uuid)
+        if request is None:
+            raise Exception("Couldn't find request with uuid '%s'" % (request_uuid,))
+        request.cancelled = True
+        request.save()
 
     def grant(self, entity, request):
         # Generate UUID, add to list of pending requests, send email with
         # link for cancellation.
         request_uuid = uuid.uuid4().get_hex()
+        timelock = TimeLock(id=request_uuid, cancelled=False)
+        timelock.save()
         message = render_template(self.notification_template, {
             'request_information': AuditTrail.sanitize(json.dumps(request.to_dict(), indent=4)),
             'request_execution_time': time.strftime('%a, %d %b %Y %H:%M:%S +0000', time.gmtime(time.time() + self.lock_duration)),
@@ -128,7 +139,7 @@ class TimeLockPolicy(MatcherPolicy):
         })
         self.notification_broker.send(Notification(['mjmalone@gmail.com'], message))
         time.sleep(self.lock_duration)
-        return not self.cancelled.pop(request_uuid, False)
+        return not TimeLock.get(request_uuid).cancelled
 
 
 class Matcher(object):

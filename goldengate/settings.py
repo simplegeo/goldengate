@@ -23,6 +23,7 @@ NOTIFICATION_BROKER = NotificationBroker()
 POLICIES = [
     allow(),
 ]
+STORAGE_BACKEND = 'locmem://'
 
 try:
     from local_settings import *
