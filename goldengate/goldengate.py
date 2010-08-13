@@ -30,6 +30,8 @@ class GoldenGate(object):
         self.authorizer = authorizer()
         if auditor is None:
             self.auditor = settings.AUDITOR
+        else:
+            self.auditor = auditor()
         self.proxy = proxy()
 
     def manage(self, request):
