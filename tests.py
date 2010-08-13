@@ -280,7 +280,11 @@ class HttpTests(GGTestCase):
             self.assertEquals(dict(start_response.headers)[name], value)
 
     def test_response_encode_headers(self):
-        raise Exception
+        headers = [(u'x-foo', u'bar')]
+        encoded = http.Response.encode_headers(headers)
+        foo, bar = encoded[0]
+        self.assertTrue(isinstance(foo, str))
+        self.assertTrue(isinstance(bar, str))
 
     def test_http_exception(self):
         exception = http.HTTPException()
