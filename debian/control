@@ -3,7 +3,7 @@ Section: python
 Priority: extra
 Maintainer: SimpleGeo Nerds <nerds@simplegeo.com>
 Uploaders: Paul Lathrop <paul@simplegeo.com>
-Build-Depends: cdbs, debhelper (>= 7), python, python-support, python-dev, python-setuptools
+Build-Depends: cdbs, debhelper (>= 7), python, python-support, python-setuptools
 Standards-Version: 3.8.4
 Homepage: https://github.com/simplegeo/goldengate/tree/master/goldengate/
 
