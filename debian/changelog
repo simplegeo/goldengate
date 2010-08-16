@@ -1,3 +1,39 @@
+goldengate (1.0.4) lucid; urgency=low
+
+  [ Paul Lathrop ]
+  * add missing dependency
+
+  [ mmalone ]
+  * command-line tool for generating random credentials.
+  * s/policy/allow/
+  * Cleaning up some imports.
+  * Need to append port to host if it's non-standard.
+  * New key-value store backend mostly cribbed from Six Apart's django-
+    kvstore project (new BSD license included).
+  * What if auditor is not None!?
+  * HTTPException knows how to serialize itself into an HTTP response.
+    Now handling exceptional conditions can be centralized.
+  * Only set request content-type if it's in the environ.
+  * Accept a list of tuples or a dictionary for headers.
+  * Copy URL parameters when cloning a URL.
+  * Simplify HTTP response.
+  * starting in on some documentation.
+  * What's this thing for, anyways?
+  * Use kvstore for TimeLocks.
+  * HTTP tests, auth tests, and a couple high level tests.
+  * Dependency inject teh policies.
+  * fix response encoding test.
+  * Tests for KVStore storage backends.
+  * testing turned up some bugs in kvstore. big surprise.
+
+  [ Paul Lathrop ]
+  * add init script and default file
+  * add dirs file so log dir is created properly
+
+  [ SimpleGeo Nerds ]
+
+ -- SimpleGeo Nerds <nerds@simplegeo.com>  Mon, 16 Aug 2010 23:25:46 +0000
+
 goldengate (1.0.0) unstable; urgency=low
 
   * Initial Release.
