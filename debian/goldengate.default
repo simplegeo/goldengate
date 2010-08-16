@@ -1,0 +1,16 @@
+# Defaults for goldengate initscript
+# sourced by /etc/init.d/goldengate
+# installed at /etc/default/goldengate by the maintainer scripts
+
+#
+# This is a POSIX shell fragment
+#
+
+# Additional options that are passed to the Daemon.
+DAEMON_OPTS="--log-file=/var/log/goldengate/goldengate.log --bind=0.0.0.0:8000 --workers=4 --worker-class=egg:gunicorn#eventlet"
+
+# Location of localsettings.py
+GOLDENGATE_PATH="/etc/goldengate"
+
+# Change to "yes" to start daemon.
+RUN="no"
