@@ -57,11 +57,11 @@ class MissingPolicyException(Exception):
 class Policy(object):
     def applies_to(self, entity, request):
         """Returns true if this policy applies to the request."""
-        raise NotImplementedError
+        raise NotImplementedError()
 
     def grant(self, entity, request):
         """Should we grant entity permission to perform request?"""
-        raise NotImplementedError
+        raise NotImplementedError()
 
     @classmethod
     def for_request(self, entity, request, policies=None):
@@ -149,7 +149,7 @@ class TimeLockPolicy(MatcherPolicy):
 
 class Matcher(object):
     def matches(self, entity, request):
-        raise NotImplementedError
+        raise NotImplementedError()
 
 
 class AllMatcher(Matcher):
