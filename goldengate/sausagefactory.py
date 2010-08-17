@@ -4,6 +4,7 @@ Things go into sausage factory but they don't come back out.
 from __future__ import with_statement
 import fcntl
 import re
+import time
 try:
     import simplejson as json
 except ImportError:
@@ -24,7 +25,7 @@ class AuditTrail(object):
 
     def format(self, entity, action):
         # Might also want an optional transaction identifier
-        return self.sanitize(json.dumps({'entity': entity, 'action': action}))
+        return self.sanitize(json.dumps([time.strftime('%Y-%m-%d %H:%M:%S'), {'entity': entity, 'action': action}]))
 
     def record(self, entity, action):
         print self.format(entity, action)
