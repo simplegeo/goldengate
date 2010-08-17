@@ -42,12 +42,12 @@ class StorageClass(BaseStorage):
     def set(self, key, value):
         if isinstance(value, unicode):
             value = value.encode('utf-8')
-        self._db[_utf8_str(key)] = simplejson.dumps(value)
+        self._db[_utf8_str(key)] = json.dumps(value)
 
     def get(self, key):
         val = self._db.get(_utf8_str(key))
         if isinstance(val, basestring):
-            return simplejson.loads(val)
+            return json.loads(val)
         else:
             return val
 
