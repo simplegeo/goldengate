@@ -4,15 +4,15 @@
 
 
 import httplib2
-import auth
-from http import Request, Response, HTTPException, clone_url
-from sausagefactory import AuditTrail
 from urlparse import urljoin
 try:
     import settings
 except ImportError:
     print 'Error: missing settings'
-from credentials import StaticCredentialStore, Credential
+from .credentials import StaticCredentialStore, Credential
+from .http import Request, Response, HTTPException, clone_url
+from .sausagefactory import AuditTrail
+from .auth import aws
 
 
 class Proxy(object):
@@ -26,20 +26,17 @@ class Proxy(object):
         self.http = httplib2.Http()
 
     def request(self, request):
-        response, content = self.http.request(request.get_url(), request.method, headers=request.headers, body=request.body)
+        response, content = self.http.request(request.get_url(), request.method, headers=dict(request.headers), body=request.body)
         status = int(response.pop('status'))
         return Response(status, response, content)
 
 
 class GoldenGate(object):
-    def __init__(self, authenticator=auth.AWSAuthenticator, authorizer=lambda: auth.AWSAuthorizer(settings.AWS_KEY, settings.AWS_SECRET), auditor=None, proxy=Proxy):
+    def __init__(self, authenticator=aws.Authenticator, authorizer=aws.Authorizer, auditor=lambda: settings.AUDITOR, proxy=Proxy):
         credentials = [Credential(*credential) for credential in settings.CREDENTIALS]
         self.authenticator = authenticator(StaticCredentialStore(credentials))
         self.authorizer = authorizer()
-        if auditor is None:
-            self.auditor = settings.AUDITOR
-        else:
-            self.auditor = auditor()
+        self.auditor = auditor()
         self.proxy = proxy()
 
     def manage(self, request):
@@ -63,17 +60,14 @@ class GoldenGate(object):
             return self.manage(request)
 
         entity = self.authenticator.authenticate(request)
-        headers = dict(request.headers)
-        headers['host'] = settings.REMOTE_HOST
-        proxy_request = self.authorizer.sign(
-            entity, 
-            request._clone(
-                url=clone_url(request.url, host=settings.REMOTE_HOST),
-                headers=headers
-            )
+        authorized_request = self.authorizer.authorize(entity, request)
+        self.auditor.record(
+            entity, [
+                'applied', 
+                [request.to_dict(), authorized_request.to_dict()],
+            ]
         )
-        self.auditor.record(entity, ['applied', [request.to_dict(), proxy_request.to_dict()]])
-        return self.proxy.request(proxy_request)
+        return self.proxy.request(authorized_request)
 
 
 class Handler(object):
