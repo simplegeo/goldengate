@@ -1,3 +1,10 @@
 env/
 goldengate/local_settings.py
-goldengate.egg*
+/bin
+/lib
+/man
+/include
+/.Python
+/*.egg
+/*.egg-info
+*.pyc
