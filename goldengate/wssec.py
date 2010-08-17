@@ -62,7 +62,7 @@ def find_element_by_id(element, id):
 
 def _(path):
     # Fix namespaces.
-    return '/'.join('{%s}%s' % (NAMESPACES.get(namespace), tag) 
+    return '/'.join('{%s}%s' % (NAMESPACES.get(namespace), tag)
             for namespace, tag in [element.split(':') for element in path.split('/')])
 
 
@@ -97,7 +97,7 @@ def parse_soap(content):
     if certificate is None:
         raise InvalidSignatureException("Couldn't find certificate in signature")
 
-    # Make sure canonicalization mechanism is exc-c14n, DigestMethod is sha1, and 
+    # Make sure canonicalization mechanism is exc-c14n, DigestMethod is sha1, and
     # SignatureMethod is rsa-sha1.
 
     timestamp = envelope.find(_('soap:Header/wsse:Security/wsu:Timestamp'))
@@ -106,7 +106,7 @@ def parse_soap(content):
     signed = cert.sign(canonize(envelope.find(_('soap:Header/wsse:Security/ds:Signature/ds:SignedInfo'))))
     print 'SignatureValue', signed
     #assert cert.verify(canonize(envelope.find(_('soap:Header/wsse:Security/ds:Signature/ds:SignedInfo'))), signed)
-    
+
     for reference in envelope.findall(_('soap:Header/wsse:Security/ds:Signature/ds:SignedInfo/ds:Reference')):
         check_reference(reference, envelope)
 

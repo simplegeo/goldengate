@@ -20,7 +20,7 @@ class Field(object):
     def decode(self, value):
         """Decodes an object from the datastore into a python object."""
         return value
-    
+
     def encode(self, value):
         """Encodes an object into a value suitable for the backend datastore."""
         return value
@@ -28,7 +28,7 @@ class Field(object):
 
 class ModelMetaclass(type):
     """
-    Metaclass for `kvstore.models.Model` instances. Installs 
+    Metaclass for `kvstore.models.Model` instances. Installs
     `kvstore.models.Field` and `kvstore.models.Key` instances
     declared as attributes of the new class.
 
@@ -117,4 +117,3 @@ class Model(object):
         if fields is None:
             return None
         return cls.from_dict(fields)
-

@@ -34,4 +34,3 @@ class StaticCredentialStore(CredentialStore):
     def for_entity(self, entity):
         "Returns a list of credentials for a particular entity."
         return [credential for credential in self.credentials if credential.entity == entity]
-

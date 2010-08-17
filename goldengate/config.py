@@ -95,4 +95,3 @@ class AWSSecret(Setting):
 class Policies(Setting):
     name = 'policies'
     default = []
-

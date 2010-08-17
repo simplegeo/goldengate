@@ -60,7 +60,7 @@ class GoldenGate(object):
         authorized_request = self.authorizer.authorize(entity, request)
         self.auditor.record(
             entity, [
-                'applied', 
+                'applied',
                 [request.to_dict(), authorized_request.to_dict()],
             ]
         )
@@ -86,4 +86,3 @@ class Handler(object):
 
 
 application = Handler(GoldenGate())
-

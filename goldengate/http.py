@@ -100,7 +100,7 @@ def url_from_environ(environ):
     for k, v in parameters.iteritems():
         parameters[k] = urllib.unquote(v[0])
 
-    # Ignoring SCRIPT_NAME and URL fragments. 
+    # Ignoring SCRIPT_NAME and URL fragments.
     return URL(
         scheme=environ['wsgi.url_scheme'],
         host=host,
@@ -110,7 +110,7 @@ def url_from_environ(environ):
 
 
 def headers_from_environ(environ):
-    headers = dict([(key[5:].replace('_', '-').lower(), value) 
+    headers = dict([(key[5:].replace('_', '-').lower(), value)
                     for key, value in environ.iteritems() if key.startswith('HTTP_')])
     if 'CONTENT_TYPE' in environ:
         headers['content-type'] = environ['CONTENT_TYPE']
@@ -217,4 +217,3 @@ class Response(object):
             else:
                 return str(data)
         return [(_encode(key), _encode(value)) for key, value in headers]
-

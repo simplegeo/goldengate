@@ -205,4 +205,3 @@ class AWSActionMatcher(Matcher):
 class AlwaysMatcher(Matcher):
     def matches(self, entity, request):
         return True
-

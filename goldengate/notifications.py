@@ -43,4 +43,3 @@ class EmailNotificationBroker(object):
             message['Subject'] = 'Golden Gate Notification'
             smtp.sendmail(self.sender, [recipient], message.as_string())
         smtp.quit()
-

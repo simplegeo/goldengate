@@ -4,8 +4,8 @@ from .. import policy, settings, http
 
 class Authenticator(object):
     """
-    If a request is authentic, the authenticate method will return the entity 
-    that made the request. If the request is not authentic an 
+    If a request is authentic, the authenticate method will return the entity
+    that made the request. If the request is not authentic an
     `UnauthenticatedException` will be raised.
 
     """
@@ -41,4 +41,3 @@ class Authorizer(object):
             return self.prepare(entity, request)
         else:
             raise UnauthorizedException(entity)
-

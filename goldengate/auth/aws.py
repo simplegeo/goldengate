@@ -196,7 +196,7 @@ class Authorizer(base.Authorizer):
         # Re-sign the request with the real AWS credentials.
         request = super(Authorizer, self).prepare(entity, request)
         return request._clone(klass=Request).signed_request(
-            self.signature_method, 
+            self.signature_method,
             self.aws_key,
             self.aws_secret
         )
@@ -204,4 +204,3 @@ class Authorizer(base.Authorizer):
     def authorize(self, entity, request):
         # Make sure request is an aws.Request
         return super(Authorizer, self).authorize(entity, request._clone(klass=Request))
-

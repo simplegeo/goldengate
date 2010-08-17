@@ -61,7 +61,7 @@ BACKENDS = {
 }
 
 
-class InvalidKeyValueStoreBackend(Exception): 
+class InvalidKeyValueStoreBackend(Exception):
     pass
 
 
@@ -92,3 +92,4 @@ def get_kvstore(backend_uri):
         module = __import__(scheme, {}, {}, [''])
     return getattr(module, 'StorageClass')(host, params)
 
+kvstore = get_kvstore(settings.STORAGE_BACKEND)

@@ -44,4 +44,3 @@ class FileAuditTrail(AuditTrail):
             log_file.write("\n")
             log_file.flush()
             fcntl.lockf(log_file.fileno(), fcntl.LOCK_UN)
-

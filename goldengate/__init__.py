@@ -23,20 +23,20 @@ def load_config():
         if not os.path.exists(filename):
             sys.stderr.write('Invalid filename: ' + filename)
             return
-        environment = { 
+        environment = {
             '__builtins__': __builtins__,
             '__name__': '__config__',
             '__file__': filename,
             '__doc__': None,
             '__package__': None
-        }   
+        }
         try:
             execfile(filename, environment, environment)
         except Exception, e:
             print 'Unable to read configuration file: %s' % filename
             traceback.print_exc()
             sys.exit(1)
-    
+
         for key, value in list(environment.items()):
             # Ignore unknown names
             if key.lower() not in settings.settings:
@@ -44,7 +44,7 @@ def load_config():
             try:
                 settings.set(key.lower(), value)
             except:
-                sys.stderr.write("Invalid value for %s: %s\n\n" % (key, value)) 
+                sys.stderr.write("Invalid value for %s: %s\n\n" % (key, value))
                 raise
 load_config()
 
@@ -64,4 +64,3 @@ def random_token(length=RANDOM_TOKEN_STRING_LENGTH, alphabet=RANDOM_TOKEN_ALPHAB
 
 def generate_credentials():
     print ', '.join([random_token(), random_token(32)])
-

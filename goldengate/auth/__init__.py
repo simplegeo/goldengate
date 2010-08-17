@@ -12,5 +12,3 @@ class UnauthenticatedException(HTTPException):
     type = 'unauthenticated'
     def __init__(self, body=''):
         super(UnauthenticatedException, self).__init__(401, body=body)
-
-
