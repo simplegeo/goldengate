@@ -7,10 +7,10 @@ Credential = namedtuple('Credentials', 'entity key secret')
 class CredentialStore(object):
     "Abstract credentials store."
 
-    def credentials_for_key(self, key):
+    def for_key(self, key):
         return None
 
-    def credentials_for_entity(self, entity):
+    def for_entity(self, entity):
         return None
 
 
@@ -21,7 +21,11 @@ class StaticCredentialStore(CredentialStore):
         self.credentials = credentials
 
     def for_key(self, key):
-        "Returns a single credential for a specific key."
+        """
+        Returns a single credential for a specific key or None if no
+        credentials exist.
+
+        """
         for credential in self.credentials:
             if credential.key == key:
                 return credential
@@ -30,3 +34,4 @@ class StaticCredentialStore(CredentialStore):
     def for_entity(self, entity):
         "Returns a list of credentials for a particular entity."
         return [credential for credential in self.credentials if credential.entity == entity]
+
