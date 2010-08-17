@@ -91,12 +91,12 @@ class BooleanPolicy(MatcherPolicy):
 
 class AllowPolicy(BooleanPolicy):
     def __init__(self, matcher):
-        return super(AllowPolicy, self).__init__(True, matcher)
+        super(AllowPolicy, self).__init__(True, matcher)
 
 
 class DenyPolicy(BooleanPolicy):
     def __init__(self, matcher):
-        return super(DenyPolicy, self).__init__(False, matcher)
+        super(DenyPolicy, self).__init__(False, matcher)
 
 
 class TimeLock(models.Model):
