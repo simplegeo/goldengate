@@ -32,6 +32,8 @@ class AuditTrail(object):
 
 
 class FileAuditTrail(AuditTrail):
+    # This isn't really tested and probably doesn't work.
+
     def __init__(self, filename):
         self.filename = filename
 
