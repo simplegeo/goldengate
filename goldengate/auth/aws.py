@@ -1,11 +1,11 @@
 import hmac
 import base64
-import http
 import time
 import calendar
 import random
 
-from policy import Policy
+from .. import settings, http
+from . import base, UnauthenticatedException
 
 
 def _utf8_str(s):
@@ -28,67 +28,6 @@ def _are_equal(this, that):
         return False
     rot = random.randint(0, len(this)-1)
     return (this[:rot] + this[rot:]) == (that[:rot] + that[rot:])
-
-
-class UnauthorizedException(http.HTTPException):
-    type = 'unauthorized'
-    def __init__(self, entity, body=''):
-        self.entity = entity
-        super(UnauthorizedException, self).__init__(403, body=body)
-
-
-class UnauthenticatedException(http.HTTPException):
-    type = 'unauthenticated'
-    def __init__(self, body=''):
-        super(UnauthenticatedException, self).__init__(401, body=body)
-
-
-class AWSQueryRequest(http.Request):
-    """
-    A request that uses Amazon AWS's token-based signature authentication,
-    mostly used by their various REST APIs.
-
-    """
-
-    @property
-    def aws_action(self):
-        return self.url.parameters['Action']
-
-    def get_normalized_parameters(self):
-        """
-        Returns an ordered list of all of the parameters required in the
-        signature.
-
-        """
-        return http.urlencode([(_utf8_str(k), _utf8_str(v)) for k, v in
-                            sorted(self.url.parameters.iteritems())
-                            if k != 'Signature'])
-
-    def get_normalized_http_method(self):
-        return self.method
-
-    def get_normalized_http_host(self):
-        host = self.url.host.lower()
-        scheme = self.url.scheme.lower()
-        if scheme == 'http' and host.endswith(':80') or \
-           scheme == 'https' and host.endswith(':443'):
-            host = ''.join(host.split(':')[:-1])
-        return host
-
-    def get_normalized_http_path(self):
-        # For an empty path use '/'
-        return self.url.path if self.url.path else '/'
-
-    def signed_request(self, signature_method, aws_key, aws_secret):
-        parameters = self.url.parameters.copy()
-        parameters['AWSAccessKeyId'] = aws_key
-        parameters['SignatureVersion'] = signature_method.version
-        parameters['SignatureMethod'] = signature_method.name
-        parameters['Timestamp'] = generate_timestamp()
-        prepared = self._clone(url=http.clone_url(self.url, parameters=parameters))
-
-        parameters['Signature'] = signature_method.build_signature(prepared, aws_secret)
-        return self._clone(url=http.clone_url(prepared.url, parameters=parameters))
 
 
 class SignatureMethod(object):
@@ -136,7 +75,64 @@ class SignatureMethod_HMAC_SHA256(SignatureMethod):
         return base64.b64encode(hashed.digest())
 
 
-class AWSAuthenticator(object):
+class Request(http.Request):
+    """
+    A request that uses Amazon AWS's token-based signature authentication,
+    mostly used by their various REST APIs.
+
+    """
+
+    @property
+    def aws_action(self):
+        return self.url.parameters['Action']
+
+    def get_normalized_parameters(self):
+        """
+        Returns an ordered list of all of the parameters required in the
+        signature.
+
+        """
+        return http.urlencode([(_utf8_str(k), _utf8_str(v)) for k, v in
+                            sorted(self.url.parameters.iteritems())
+                            if k != 'Signature'])
+
+    def get_normalized_http_method(self):
+        return self.method
+
+    def get_normalized_http_host(self):
+        host = self.url.host.lower()
+        scheme = self.url.scheme.lower()
+        if scheme == 'http' and host.endswith(':80') or \
+           scheme == 'https' and host.endswith(':443'):
+            host = ''.join(host.split(':')[:-1])
+        return host
+
+    def get_normalized_http_path(self):
+        # For an empty path use '/'
+        return self.url.path if self.url.path else '/'
+
+    def signed_request(self, signature_method, aws_key, aws_secret):
+        parameters = self.url.parameters.copy()
+        parameters['AWSAccessKeyId'] = aws_key
+        parameters['SignatureVersion'] = signature_method.version
+        parameters['SignatureMethod'] = signature_method.name
+        parameters['Timestamp'] = generate_timestamp()
+        prepared = self._clone(url=http.clone_url(self.url, parameters=parameters))
+
+        parameters['Signature'] = signature_method.build_signature(prepared, aws_secret)
+        return self._clone(url=http.clone_url(prepared.url, parameters=parameters))
+
+
+class Authenticator(base.Authenticator):
+    """
+    GoldenGate Authenticator that authenticates requests using Amazon's
+    token-based authentication. If a request is authentic, the authenticate
+    method will return the entity that made the request. If the request is not
+    authentic (signature mismatch, expired timestamp, missing signature
+    parameters, etc.) an `UnauthenticatedException` will be raised.
+
+    """
+
     TIMESTAMP_THRESHOLD = 300 # In seconds, five minutes.
     signature_methods = [SignatureMethod_HMAC_SHA1(), SignatureMethod_HMAC_SHA256()]
 
@@ -169,7 +165,7 @@ class AWSAuthenticator(object):
             raise UnauthenticatedException('signature mismatch')
         signer = self.get_signature_method(signature_method, signature_version)
 
-        expected_signature = signer.build_signature(request._clone(klass=AWSQueryRequest), credentials.secret)
+        expected_signature = signer.build_signature(request._clone(klass=Request), credentials.secret)
         if _are_equal(signature, expected_signature):
             return credentials.entity
         else:
@@ -183,20 +179,29 @@ class AWSAuthenticator(object):
         raise UnauthenticatedException('invalid signature method or signature version')
 
 
-class AWSAuthorizer(object):
+class Authorizer(base.Authorizer):
+    """
+    AWS Authorizer that re-signs a request with the real AWS credentials after
+    verifying that it's authorized.
+
+    """
     signature_method = SignatureMethod_HMAC_SHA256()
 
-    def __init__(self, aws_key, aws_secret):
-        self.aws_key = aws_key
-        self.aws_secret = aws_secret
+    def __init__(self, aws_key=None, aws_secret=None, *args, **kwargs):
+        self.aws_key = aws_key if aws_key is not None else settings.AWS_KEY
+        self.aws_secret = aws_secret if aws_secret is not None else settings.AWS_SECRET
+        super(Authorizer, self).__init__(*args, **kwargs)
 
-    def authorized(self, entity, request):
-        return Policy.for_request(request).grant(entity, request)
+    def prepare(self, entity, request):
+        # Re-sign the request with the real AWS credentials.
+        request = super(Authorizer, self).prepare(entity, request)
+        return request._clone(klass=Request).signed_request(
+            self.signature_method, 
+            self.aws_key,
+            self.aws_secret
+        )
 
-    def sign(self, entity, request):
-        aws_request = request._clone(klass=AWSQueryRequest)
-        if self.authorized(entity, aws_request):
-            return aws_request.signed_request(self.signature_method, self.aws_key, self.aws_secret)
-        else:
-            raise UnauthorizedException(entity)
+    def authorize(self, entity, request):
+        # Make sure request is an aws.Request
+        return super(Authorizer, self).authorize(entity, request._clone(klass=Request))
 
