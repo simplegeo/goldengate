@@ -9,7 +9,7 @@ Homepage: https://github.com/simplegeo/goldengate/tree/master/goldengate/
 
 Package: goldengate
 Architecture: all
-Depends: ${shlibs:Depends}, ${misc:Depends}, python, eventlet, greenlet, gunicorn, python-setuptools
+Depends: ${shlibs:Depends}, ${misc:Depends}, python, eventlet, greenlet, gunicorn, python-setuptools, python-setproctitle
 Description: Golden Gate is a cloud gateway
  Golden Gate is a cloud gateway *whomp whomp*. More generally, it is a
  broker for an HTTP service that applies more granular authentication
