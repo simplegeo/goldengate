@@ -9,7 +9,7 @@ try:
     from cStringIO import StringIO
 except ImportError:
     from StringIO import StringIO
-from goldengate import goldengate, http, auth, policy, kvstore
+from goldengate import goldengate, http, auth, policy, kvstore, credentials, settings
 
 
 SIMPLEDB_TEST_DOMAIN = 'goldengatetests' # This has to be created already.
@@ -34,15 +34,14 @@ class WSGIInput(object):
 class MockAuthorizer(object):
     authorized = True
     entity = None
-    signed_request = None
-    def authorized(entity, request):
+    request = None
+    def authorize(self, entity, request):
         self.entity = entity
         self.request = request
-        return self.authorized
-    def sign(self, entity, request):
-        self.entity = entity
-        self.signed_request = request
-        return request
+        if self.authorized:
+            return request
+        else:
+            raise auth.UnauthorizedException(self.entity)
 
 
 class MockAuthenticator(object):
@@ -309,7 +308,43 @@ class HttpTests(GGTestCase):
         self.assertEquals(exception.type, 'error')
 
 
-class AWSRequestTests(GGTestCase):
+class ProxyTests(GGTestCase):
+    environ = {
+        'PATH_INFO': '/foo/bar/',
+        'REQUEST_METHOD': 'POST',
+        'QUERY_STRING': 'monkey=wrench&foo=bar',
+        'HTTP_HOST': 'example.com:8000',
+        'CONTENT_TYPE': 'application/x-www-form-urlencoded',
+        'wsgi.url_scheme': 'https',
+        'wsgi.input': WSGIInput(),
+    }
+
+    class MockHttp(object):
+        response = {'x-favorite-vegetable': 'asparagus', 'status': '200'}
+        content = 'snarf!'
+        def request(self, url, method, headers, body):
+            self.url = url
+            self.method = method
+            self.headers = headers
+            self.body = body
+            return self.response, self.content
+
+    def test_request(self):
+        proxy = goldengate.Proxy()
+        proxy.http = self.MockHttp()
+        request = http.Request.from_wsgi(self.environ, StartResponse())
+        response = proxy.request(request)
+        self.assertEquals(proxy.http.url, request.get_url())
+        self.assertEquals(proxy.http.method, request.method)
+        for key, value in request.headers:
+            self.assertEquals(proxy.http.headers[key], value)
+        self.assertEquals(proxy.http.body, request.body)
+        for key, value in response.headers:
+            self.assertEquals(proxy.http.response[key], value)
+        self.assertEquals(response.body, proxy.http.content)
+
+
+class AWSTests(GGTestCase):
     scheme = 'http'
     host = 'example.com:8000'
     path = '/'
@@ -322,6 +357,7 @@ class AWSRequestTests(GGTestCase):
     action = 'DescribeInstances'
 
     def setUp(self):
+        super(AWSTests, self).setUp()
         self.input = WSGIInput()
 
     @property
@@ -343,6 +379,9 @@ class AWSRequestTests(GGTestCase):
             'wsgi.url_scheme': self.scheme,
             'wsgi.input': self.input,
         }
+
+
+class AWSRequestTests(AWSTests):
 
     def test_action(self):
         request = auth.aws.Request.from_wsgi(self.environ, StartResponse())
@@ -391,7 +430,7 @@ class AWSRequestTests(GGTestCase):
             self.assertEquals(signed.url.parameters['Version'], request.url.parameters['Version'])
 
 
-class AuthTests(GGTestCase):
+class AuthTests(AWSTests):
     def test_unauthorized_exception(self):
         exception = auth.UnauthorizedException('dereks_mom@example.com', 'a message')
         self.assertHTTPExceptionEquals(exception, 403, [], 'a message')
@@ -404,10 +443,139 @@ class AuthTests(GGTestCase):
         self.assertEquals(exception.type, 'unauthenticated')
 
 
+class AWSAuthTests(AWSTests):
+
+    def setUp(self):
+        self.aws_key = 'key'
+        self.aws_secret = 'secret'
+        self.entity = 'snarf@example.com'
+        self.entity_key = 'snarf'
+        self.entity_secret = 'sn4rf'
+        self.credentials = credentials.StaticCredentialStore([credentials.Credential(self.entity, self.entity_key, self.entity_secret)])
+        self.authenticator = auth.aws.Authenticator(self.credentials)
+        self.authorizer = auth.aws.Authorizer(self.aws_key, self.aws_secret, policies=[policy.allow()])
+        super(AWSAuthTests, self).setUp()
+
+    def signed_request(self, request=None, signature_method=None, key=None, secret=None, timestamp=None):
+        signature_method = signature_method if signature_method is not None else auth.aws.SignatureMethod_HMAC_SHA256()
+        request = request if request is not None else auth.aws.Request.from_wsgi(self.environ, StartResponse())
+        parameters = request.url.parameters.copy()
+        parameters['AWSAccessKeyId'] = key if key else self.entity_key
+        parameters['SignatureVersion'] = signature_method.version
+        parameters['SignatureMethod'] = signature_method.name
+        parameters['Timestamp'] = timestamp if timestamp is not None else auth.aws.generate_timestamp()
+        prepared = request._clone(url=http.clone_url(request.url, parameters=parameters))
+
+        parameters['Signature'] = signature_method.build_signature(prepared, secret if secret is not None else self.entity_secret)
+        return request._clone(url=http.clone_url(prepared.url, parameters=parameters))
+
+    # Authenticator tests
+
+    def test_expired_timestamp(self):
+        request = self.signed_request(timestamp=time.strftime(auth.aws.TIME_FORMAT, time.gmtime(time.time() - 301)))
+        self.assertRaises(auth.UnauthenticatedException, self.authenticator.authenticate, request)
+
+    def test_future_timestamp(self):
+        request = self.signed_request(timestamp=time.strftime(auth.aws.TIME_FORMAT, time.gmtime(time.time() + 301)))
+        self.assertRaises(auth.UnauthenticatedException, self.authenticator.authenticate, request)
+
+    def test_bad_timestamp(self):
+        request = self.signed_request(timestamp='ceci n\'est pas une timestamp.')
+        self.assertRaises(auth.UnauthenticatedException, self.authenticator.authenticate, request)
+
+    def test_missing_signature(self):
+        request = self.signed_request()
+        del request.url.parameters['Signature']
+        self.assertRaises(auth.UnauthenticatedException, self.authenticator.authenticate, request)
+
+    def test_missing_credentials(self):
+        request = self.signed_request(key='not snarf')
+        self.assertRaises(auth.UnauthenticatedException, self.authenticator.authenticate, request)
+
+    def test_signature_mismatch(self):
+        request = self.signed_request()
+        request.url.parameters['Signature'] = 'wr0ngs1gn4tur3'
+        self.assertRaises(auth.UnauthenticatedException, self.authenticator.authenticate, request)
+
+    def test_get_signature_method(self):
+        for name, version, expected in [('HmacSHA1', '2', auth.aws.SignatureMethod_HMAC_SHA1), ('HmacSHA256', '2', auth.aws.SignatureMethod_HMAC_SHA256)]:
+            self.assertTrue(isinstance(auth.aws.Authenticator.get_signature_method(name, version), expected))
+        self.assertRaises(auth.UnauthenticatedException, auth.aws.Authenticator.get_signature_method, 'HmacSHA1', '1')
+
+    def test_sha1_signature_method(self):
+        request = self.signed_request(signature_method=auth.aws.SignatureMethod_HMAC_SHA256())
+        self.assertEquals(self.authenticator.authenticate(request), self.entity)
+
+    def test_sha256_signature_method(self):
+        request = self.signed_request(signature_method=auth.aws.SignatureMethod_HMAC_SHA1())
+        self.assertEquals(self.authenticator.authenticate(request), self.entity)
+
+    # Authorizer tests
+
+    def test_prepare(self):
+        request = self.signed_request()
+        entity = self.authenticator.authenticate(request)
+        authorized = self.authorizer.prepare(entity, request)
+        self.assertEquals(authorized.url.host, settings.REMOTE_HOST)
+        request.url = http.clone_url(request.url, host=settings.REMOTE_HOST)
+        request.headers = [header if header[0] != 'host' else ('host', settings.REMOTE_HOST) for header in request.headers]
+        self.host = settings.REMOTE_HOST
+        self.assertEquals(
+            authorized.url.parameters['Signature'],
+            self.signed_request(request, key=self.aws_key, secret=self.aws_secret, timestamp=authorized.url.parameters['Timestamp']).url.parameters['Signature']
+        )
+
+    def test_authorized(self):
+        request = self.signed_request()
+        entity = self.authenticator.authenticate(request)
+        authorized = self.authorizer.authorize(entity, request)
+        request.url = http.clone_url(request.url, host=settings.REMOTE_HOST)
+        request.headers = [header if header[0] != 'host' else ('host', settings.REMOTE_HOST) for header in request.headers]
+        self.assertEquals(
+            authorized.url.parameters['Signature'],
+            self.signed_request(request, key=self.aws_key, secret=self.aws_secret, timestamp=authorized.url.parameters['Timestamp']).url.parameters['Signature']
+        )
+
+    def test_unauthorized(self):
+        self.authorizer = auth.aws.Authorizer(self.aws_key, self.aws_secret, policies=[policy.deny()])
+        request = self.signed_request()
+        entity = self.authenticator.authenticate(request)
+        authorized = self.assertRaises(auth.UnauthorizedException, self.authorizer.authorize, entity, request)
+
+
+class CredentialTests(unittest.TestCase):
+    pass
+
+
 class PolicyTests(GGTestCase):
     def test_missing_policy(self):
         request = http.Request('get', 'http://example.com/', [], '', StartResponse())
-        self.assertRaises(policy.MissingPolicyException, policy.Policy.for_request, request, [])
+        self.assertRaises(policy.MissingPolicyException, policy.Policy.for_request, 'foo',  request, [])
+
+
+class MatcherTests(GGTestCase):
+    class MockAWSRequest(object):
+        def __init__(self, aws_action):
+            self.aws_action = aws_action
+
+    def test_aws_action_matcher(self):
+        self.assertTrue(policy.AWSActionMatcher('DescribeInstances').matches(None, self.MockAWSRequest('DescribeInstances')))
+        self.assertFalse(policy.AWSActionMatcher('DescribeInstances').matches(None, self.MockAWSRequest('TerminateInstance')))
+
+    def test_entity_matcher(self):
+        self.assertTrue(policy.EntityMatcher(['foo']).matches('foo', None))
+        self.assertFalse(policy.EntityMatcher(['foo']).matches('bar', None))
+
+    def test_all_matcher(self):
+        self.assertTrue(policy.AllMatcher([policy.AlwaysMatcher(), policy.AlwaysMatcher()]).matches(None, None))
+        self.assertFalse(policy.AllMatcher([policy.AlwaysMatcher(), policy.NotMatcher(policy.AlwaysMatcher())]).matches(None, None))
+        self.assertFalse(policy.AllMatcher([policy.NotMatcher(policy.AlwaysMatcher())]).matches(None, None))
+
+    def test_any_matcher(self):
+        self.assertTrue(policy.AnyMatcher([policy.AlwaysMatcher(), policy.AlwaysMatcher()]).matches(None, None))
+        self.assertTrue(policy.AnyMatcher([policy.AlwaysMatcher(), policy.NotMatcher(policy.AlwaysMatcher())]).matches(None, None))
+        self.assertFalse(policy.AnyMatcher([policy.NotMatcher(policy.AlwaysMatcher())]).matches(None, None))
+        self.assertTrue(policy.AnyMatcher([policy.NotMatcher(policy.AlwaysMatcher()), policy.AlwaysMatcher()]).matches(None, None))
 
 
 class KVStoreTests(unittest.TestCase):
@@ -476,7 +644,7 @@ class SimpleDBKVStoreTests(unittest.TestCase, KVStoreBackendTests):
     def wait(self):
         # TODO: Use SimpleDB consistency levels instead of sleeping.
         import time
-        time.sleep(2)
+        time.sleep(0.5)
 
 
 if __name__ == '__main__':
