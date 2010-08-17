@@ -195,6 +195,8 @@ class Response(object):
 
     def __init__(self, status=200, headers=None, body=''):
         self.status = status
+        if isinstance(headers, dict):
+            headers = headers.items()
         self.headers = headers if headers is not None else []
         self.body = body
 
