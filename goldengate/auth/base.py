@@ -37,7 +37,7 @@ class Authorizer(object):
         return request
 
     def authorize(self, entity, request):
-        if policy.Policy.for_request(request, policies=self.policies).grant(entity, request):
+        if policy.Policy.for_request(entity, request, policies=self.policies).grant(entity, request):
             return self.prepare(entity, request)
         else:
             raise UnauthorizedException(entity)

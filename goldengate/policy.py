@@ -9,7 +9,7 @@ except ImportError:
 from kvstore import models
 
 
-def action(action, allow, **kwargs):
+def action(action, allow, entities=None, **kwargs):
     """
     Helper for constructing AWS policies. The policy will match AWS request that
     match a particular action. If allow is True the request will be granted. If
@@ -18,6 +18,9 @@ def action(action, allow, **kwargs):
 
     """
     matcher = AWSActionMatcher(action)
+    if entities is not None:
+        matcher = AllMatcher([EntityMatcher(entities), matcher])
+
     if allow is True:
         return AllowPolicy(matcher, **kwargs)
     elif allow is False:
@@ -51,7 +54,7 @@ class MissingPolicyException(Exception):
 
 
 class Policy(object):
-    def applies_to(self, request):
+    def applies_to(self, entity, request):
         """Returns true if this policy applies to the request."""
         raise NotImplementedError
 
@@ -60,12 +63,12 @@ class Policy(object):
         raise NotImplementedError
 
     @classmethod
-    def for_request(self, request, policies=None):
+    def for_request(self, entity, request, policies=None):
         if policies is None:
             import policies as _policies
             policies = getattr(_policies, 'POLICIES', [])
         for policy in policies:
-            if policy.applies_to(request):
+            if policy.applies_to(entity, request):
                 return policy
         raise MissingPolicyException
 
@@ -74,8 +77,8 @@ class MatcherPolicy(object):
     def __init__(self, matcher):
         self.matcher = matcher
 
-    def applies_to(self, request):
-        return self.matcher.matches(request)
+    def applies_to(self, entity, request):
+        return self.matcher.matches(entity, request)
 
 
 class BooleanPolicy(MatcherPolicy):
@@ -145,15 +148,53 @@ class TimeLockPolicy(MatcherPolicy):
 
 
 class Matcher(object):
-    def matches(self, request):
+    def matches(self, entity, request):
         raise NotImplementedError
 
 
-class AWSActionMatcher(object):
+class AllMatcher(Matcher):
+    def __init__(self, matchers):
+        self.matchers = matchers
+
+    def matches(self, entity, request):
+        for matcher in self.matchers:
+            if not matcher.matches(entity, request):
+                return False
+        return True
+
+
+class AnyMatcher(Matcher):
+    def __init__(self, matchers):
+        self.matchers = matchers
+
+    def matches(self, entity, request):
+        for matcher in self.matchers:
+            if matcher.matches(entity, request):
+                return True
+        return False
+
+
+class NotMatcher(Matcher):
+    def __init__(self, matcher):
+        self.matcher = matcher
+
+    def matches(self, entity, request):
+        return not self.matcher.matches(entity, request)
+
+
+class EntityMatcher(Matcher):
+    def __init__(self, entities):
+        self.entities = entities
+
+    def matches(self, entity, request):
+        return entity in self.entities
+
+
+class AWSActionMatcher(Matcher):
     def __init__(self, action):
         self.action = action
 
-    def matches(self, request):
+    def matches(self, entity, request):
         action = getattr(request, 'aws_action', None)
         if action is None:
             return False
@@ -161,7 +202,7 @@ class AWSActionMatcher(object):
             return action == self.action
 
 
-class AlwaysMatcher(object):
-    def matches(self, request):
+class AlwaysMatcher(Matcher):
+    def matches(self, entity, request):
         return True
 
