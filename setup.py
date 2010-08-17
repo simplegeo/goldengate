@@ -12,7 +12,7 @@ setup(
 
     packages=['goldengate'],
     provides=['goldengate'],
-    requires=[
+    install_requires=[
         'httplib2',
     ],
     entry_points = {
