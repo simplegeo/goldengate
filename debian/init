@@ -47,7 +47,7 @@ DIETIME=10              # Time to wait for the server to die, in seconds
                         # when it actually did)
 
 LOGFILE=$LOGDIR/$NAME.log  # Server logfile
-DAEMONUSER=www-data     # Users to run the daemons as. If this value
+DAEMONUSER=nobody       # Users to run the daemons as. If this value
                         # is set start-stop-daemon will chuid the server
 
 # Include defaults if available
