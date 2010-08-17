@@ -1,0 +1,15 @@
+- Two-person integrity policy type
+  * Insititutional entity type (an account for hudson shouldn't have the
+    authority to sign-off on a request that requires two-person integrity -- two
+    non-institutional accounts must sign off on it)
+- Improved URL dispatching for management requests like time-lock cancellation
+  or two-person integrity request authorization.
+- Update and RST-ify documentation
+- Don't wait until request timeout to check TimeLock. Check periodically and
+  fail early if a TimeLock'd request is cancelled.
+- Store credentials using kvstore.
+- Sign AWS requests in AWSProxy, get rid of Authorizer.prepare().
+- Allow per-policy proxy configuration.
+- Make FileAuditTrail thread-safe.
+- Add UUID to Request so it can be used as a correlation identifier in logging
+  and so policy implementations don't have to generate a UUID themselves..?

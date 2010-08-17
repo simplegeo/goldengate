@@ -4,6 +4,7 @@ Things go into sausage factory but they don't come back out.
 from __future__ import with_statement
 import fcntl
 import re
+import time
 try:
     import simplejson as json
 except ImportError:
@@ -12,25 +13,27 @@ except ImportError:
 
 class AuditTrail(object):
     signature_pattern = re.compile('Signature=[^&]+')
-    authorization_pattern = re.compile('"authorization": "AWS [^:]+:[^"]+"')
+    authorization_pattern = re.compile('"authorization", "AWS [^:]+:[^"]+"')
 
     @classmethod
     def sanitize(cls, record):
-        import settings
+        from goldengate import settings
         # HACK HACK HACK
         record = re.sub(cls.signature_pattern, 'Signature=XXX', record) # remove Signature, if there is one.
-        record = re.sub(cls.authorization_pattern, '"authorization": "XXX"', record)
-        return record.replace(settings.AWS_SECRET, 'XXX') # just in case
+        record = re.sub(cls.authorization_pattern, '"authorization", "XXX"', record)
+        return record.replace(settings.aws_secret, 'XXX') # just in case
 
     def format(self, entity, action):
         # Might also want an optional transaction identifier
-        return self.sanitize(json.dumps({'entity': entity, 'action': action}))
+        return self.sanitize(json.dumps([time.strftime('%Y-%m-%d %H:%M:%S'), {'entity': entity, 'action': action}]))
 
     def record(self, entity, action):
         print self.format(entity, action)
 
 
 class FileAuditTrail(AuditTrail):
+    # This isn't really tested and probably doesn't work.
+
     def __init__(self, filename):
         self.filename = filename
 

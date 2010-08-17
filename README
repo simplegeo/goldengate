@@ -31,7 +31,10 @@ Backends
 
 Memory
 
-SimpleDB
+SimpleDB: Depends on python-simpledb.
+
+Memcache: Depends on a memcache library (pylibmc, cmemcache, or memcache, in
+that order).
 
 Custom: just need get, set, and delete (should be easy to write for any DHT)
 
