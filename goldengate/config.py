@@ -16,6 +16,9 @@ class Config(object):
             raise AttributeError('Invalid access!')
         super(Config, self).__setattr__(name, value)
 
+    def __str__(self):
+        return "\n".join(str(setting) for setting in self.settings.itervalues())
+
     def set(self, name, value):
         self.settings[name].set(value)
 
@@ -45,6 +48,9 @@ class Setting(object):
 
     def get(self):
         return self.value
+
+    def __str__(self):
+        return "%s: %s" % (self.name, self.value or self.default)
 
 
 class ClassSetting(Setting):
