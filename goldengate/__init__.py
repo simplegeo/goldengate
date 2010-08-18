@@ -19,33 +19,37 @@ def load_config():
     filename = os.environ.get('GOLDENGATE_PATH')
 
     # Load up the config file if its found.
-    if filename is not None:
-        if not os.path.exists(filename):
-            sys.stderr.write('Invalid filename: ' + filename)
-            return
-        environment = {
-            '__builtins__': __builtins__,
-            '__name__': '__config__',
-            '__file__': filename,
-            '__doc__': None,
-            '__package__': None
-        }
-        try:
-            execfile(filename, environment, environment)
-        except Exception, e:
-            print 'Unable to read configuration file: %s' % filename
-            traceback.print_exc()
-            sys.exit(1)
+    if filename is None:
+        return
 
-        for key, value in list(environment.items()):
-            # Ignore unknown names
-            if key.lower() not in settings.settings:
-                continue
-            try:
-                settings.set(key.lower(), value)
-            except:
-                sys.stderr.write("Invalid value for %s: %s\n\n" % (key, value))
-                raise
+    if not os.path.exists(filename):
+        sys.stderr.write('Invalid filename: ' + filename)
+        return
+
+    environment = {
+        '__builtins__': __builtins__,
+        '__name__': '__config__',
+        '__file__': filename,
+        '__doc__': None,
+        '__package__': None
+    }
+    try:
+        execfile(filename, environment, environment)
+    except Exception, e:
+        print 'Unable to read configuration file: %s' % filename
+        traceback.print_exc()
+        sys.exit(1)
+
+    for key, value in list(environment.items()):
+        # Ignore unknown names
+        if key.lower() not in settings.settings:
+            continue
+        try:
+            settings.set(key.lower(), value)
+        except:
+            sys.stderr.write("Invalid value for %s: %s\n\n" % (key, value))
+            raise
+
 load_config()
 
 
