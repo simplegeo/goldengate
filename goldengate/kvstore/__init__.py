@@ -92,4 +92,4 @@ def get_kvstore(backend_uri):
         module = __import__(scheme, {}, {}, [''])
     return getattr(module, 'StorageClass')(host, params)
 
-kvstore = get_kvstore(settings.STORAGE_BACKEND)
+kvstore = get_kvstore(settings.storage_backend)
