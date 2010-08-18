@@ -52,10 +52,6 @@ def load_config():
 
 load_config()
 
-
-from .goldengate import application
-
-
 RANDOM_TOKEN_STRING_LENGTH = 16
 RANDOM_TOKEN_ALPHABET = 'abcdefghjklmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789'
 

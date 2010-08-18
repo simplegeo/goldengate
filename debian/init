@@ -56,7 +56,8 @@ if [ -f /etc/default/$NAME ] ; then
 fi
 
 # Mandatory options to make goldengate run correctly.
-GG_OPTS="--name=${NAME} --daemon goldengate:application"
+GG_OPTS="--name=${NAME} --daemon --pid=${PIDFILE} \
+         --user=nobody --group=nogroup goldengate.goldengate:application "
 DAEMON_OPTS="${DAEMON_OPTS} ${GG_OPTS}"
 
 # Use this if you want the user to explicitly set 'RUN' in
