@@ -8,3 +8,11 @@ goldengate/local_settings.py
 /*.egg
 /*.egg-info
 *.pyc
+/build
+/dist
+/debian/goldengate
+/debian/files
+/debian/*.log
+/debian/*.debhelper
+/debian/*.substvars
+/debian/*stampdir*
