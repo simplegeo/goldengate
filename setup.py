@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 import os
-from setuptools import setup
+from setuptools import setup, find_packages
 setup(
     name='goldengate',
     version='0.1',
@@ -10,7 +10,7 @@ setup(
     author_email='nerds@simplegeo.com',
     url='http://github.com/simplegeo/goldengate',
 
-    packages=['goldengate'],
+    packages=find_packages(),
     provides=['goldengate'],
     install_requires=[
         'httplib2',
