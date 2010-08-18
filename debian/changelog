@@ -1,3 +1,90 @@
+goldengate (1.0.8) lucid; urgency=low
+
+  [ Paul Lathrop ]
+  * add missing dependency
+
+  [ mmalone ]
+  * command-line tool for generating random credentials.
+  * s/policy/allow/
+  * Cleaning up some imports.
+  * Need to append port to host if it's non-standard.
+  * New key-value store backend mostly cribbed from Six Apart's django-
+    kvstore project (new BSD license included).
+  * What if auditor is not None!?
+  * HTTPException knows how to serialize itself into an HTTP response.
+    Now handling exceptional conditions can be centralized.
+  * Only set request content-type if it's in the environ.
+  * Accept a list of tuples or a dictionary for headers.
+  * Copy URL parameters when cloning a URL.
+  * Simplify HTTP response.
+  * starting in on some documentation.
+  * What's this thing for, anyways?
+  * Use kvstore for TimeLocks.
+  * HTTP tests, auth tests, and a couple high level tests.
+  * Dependency inject teh policies.
+  * fix response encoding test.
+  * Tests for KVStore storage backends.
+  * testing turned up some bugs in kvstore. big surprise.
+
+  [ Paul Lathrop ]
+  * add init script and default file
+  * add dirs file so log dir is created properly
+  * add /etc/goldengate
+  * use correct name for init script
+  * fix build dependency
+  * update init dependencies
+  * fix mistake in init script
+  * add depedency
+  * fix package names
+  * run as nobody user
+
+  [ mmalone ]
+  * Try using pylibmc first for memcache kvstore backend.
+  * Test memcached kvstore backend.
+  * readme dependencies.
+  * relative imports are better here.
+  * Tests for AWS Request.
+  * Make sure GoldenGate raises exception for unauthorized /
+    unauthenticated requests.
+  * Factor out AWS stuff from auth core.
+  * Make sure request headers is a list.
+  * headers are lists of tuples now.
+  * documentating credential store and whatnot.
+  * pass entity through to matcher and implement entity matcher and
+    other boolean matcher combinations.
+  * Added timestamp to audit trail logging.
+  * Documented broken-ness.
+  * refactorizing to use updated abstractions.
+  * Several new tests.
+  * Cleaned up the settings situation. Now you can specify a settings
+    file via the environment variable GOLDENGATE_PATH.
+  * Pass notification recipients into TimeLockPolicy.
+  * Todo list.
+
+  [ Ian Eure ]
+  * Ignore virtualenv trash & .pyc files.
+  * Fix dependencies.
+  * Raise exception instances instead of classes.
+  * Clean whitespace.
+  * Don’t return in __init__.
+  * Fix references to simplejson.
+  * Make configs printable.
+  * Fix storage_backend setting, which was broken.
+  * Return early.
+  * Fix included packages, submodules weren't being installed.
+  * Don’t import `goldengate.application' in `goldengate.__init__', it
+    makes the import path insane. Tell gunicorn to use
+    `goldengate.goldengate.application' instead.
+  * Fix the init script:  - Give gunicorn a second to start up.  - Don’t
+    set $DAEMONUSER, we’re telling gunicorn to drop privs instead.  -
+    Fix the `running_pid' call, which expected the commandline to be the
+    full path to the daemon rather than the basename.
+  * Add versioning stuff as with SG.
+
+  [ SimpleGeo Nerds ]
+
+ -- SimpleGeo Nerds <nerds@simplegeo.com>  Wed, 18 Aug 2010 19:52:19 +0000
+
 goldengate (1.0.0) unstable; urgency=low
 
   * Initial Release.
