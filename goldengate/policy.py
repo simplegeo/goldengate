@@ -114,10 +114,11 @@ class TimeLockPolicy(MatcherPolicy):
 
     """
 
-    def __init__(self, matcher, lock_duration, notification_broker, notification_template):
+    def __init__(self, matcher, lock_duration, notification_broker, notification_template, notification_recipients):
         self.lock_duration = lock_duration
         self.notification_broker = notification_broker
         self.notification_template = notification_template
+        self.notification_recipients = notification_recipients
         super(TimeLockPolicy, self).__init__(matcher)
 
     @classmethod
@@ -141,7 +142,7 @@ class TimeLockPolicy(MatcherPolicy):
             'time_lock_duration': str(self.lock_duration/60.0),
             'request_uuid': request_uuid,
         })
-        self.notification_broker.send(Notification(['mjmalone@gmail.com'], message))
+        self.notification_broker.send(Notification(self.notification_recipients, message))
         time.sleep(self.lock_duration)
         return not TimeLock.get(request_uuid).cancelled
 
