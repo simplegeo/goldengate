@@ -5,10 +5,7 @@
 
 import httplib2
 from urlparse import urljoin
-try:
-    import settings
-except ImportError:
-    print 'Error: missing settings'
+from . import settings
 from .credentials import StaticCredentialStore, Credential
 from .http import Request, Response, HTTPException, clone_url
 from .sausagefactory import AuditTrail
@@ -32,9 +29,9 @@ class Proxy(object):
 
 
 class GoldenGate(object):
-    def __init__(self, authenticator=aws.Authenticator, authorizer=aws.Authorizer, auditor=lambda: settings.AUDITOR, proxy=Proxy):
-        credentials = [Credential(*credential) for credential in settings.CREDENTIALS]
-        self.authenticator = authenticator(StaticCredentialStore(credentials))
+    def __init__(self, authenticator=aws.Authenticator, authorizer=aws.Authorizer, auditor=settings.auditor, proxy=Proxy):
+        credentials = [Credential(*credential) for credential in settings.credentials]
+        self.authenticator = authenticator(settings.credential_store(credentials))
         self.authorizer = authorizer()
         self.auditor = auditor()
         self.proxy = proxy()

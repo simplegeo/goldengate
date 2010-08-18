@@ -32,8 +32,8 @@ class Authorizer(object):
     def prepare(self, entity, request):
         # Update the request to point to the real remote host.
         request = request._clone()
-        request.url = http.clone_url(request.url, host=settings.REMOTE_HOST)
-        request.headers = [header if header[0] != 'host' else ('host', settings.REMOTE_HOST) for header in request.headers]
+        request.url = http.clone_url(request.url, host=settings.remote_host)
+        request.headers = [header if header[0] != 'host' else ('host', settings.remote_host) for header in request.headers]
         return request
 
     def authorize(self, entity, request):

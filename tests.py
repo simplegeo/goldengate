@@ -2,14 +2,14 @@
 Tests are good.
 """
 
-import unittest
+import unittest2
 import urllib
 import time
 try:
     from cStringIO import StringIO
 except ImportError:
     from StringIO import StringIO
-from goldengate import goldengate, http, auth, policy, kvstore, credentials, settings
+from goldengate import goldengate, http, auth, policy, kvstore, credentials, settings, config
 
 
 SIMPLEDB_TEST_DOMAIN = 'goldengatetests' # This has to be created already.
@@ -71,7 +71,7 @@ class MockProxy(object):
         return self.response
 
 
-class GGTestCase(unittest.TestCase):
+class GGTestCase(unittest2.TestCase):
     """
     Base test case that defines a couple handy dandy helper assertions and other fun stuff.
     """
@@ -141,6 +141,13 @@ class GoldenGateTests(GGTestCase):
     def test_unauthenticated_request(self):
         self.goldengate.authenticator.authenticated = False
         self.assertRaises(auth.UnauthenticatedException, self.goldengate.handle, self.request)
+
+
+class ConfigTests(unittest2.TestCase):
+    def test_class_setting(self):
+        setting = config.ClassSetting()
+        setting.set('goldengate.auth.aws.Authorizer')
+        self.assertTrue(setting.get() is auth.aws.Authorizer)
 
 
 class HttpTests(GGTestCase):
@@ -516,10 +523,10 @@ class AWSAuthTests(AWSTests):
         request = self.signed_request()
         entity = self.authenticator.authenticate(request)
         authorized = self.authorizer.prepare(entity, request)
-        self.assertEquals(authorized.url.host, settings.REMOTE_HOST)
-        request.url = http.clone_url(request.url, host=settings.REMOTE_HOST)
-        request.headers = [header if header[0] != 'host' else ('host', settings.REMOTE_HOST) for header in request.headers]
-        self.host = settings.REMOTE_HOST
+        self.assertEquals(authorized.url.host, settings.remote_host)
+        request.url = http.clone_url(request.url, host=settings.remote_host)
+        request.headers = [header if header[0] != 'host' else ('host', settings.remote_host) for header in request.headers]
+        self.host = settings.remote_host
         self.assertEquals(
             authorized.url.parameters['Signature'],
             self.signed_request(request, key=self.aws_key, secret=self.aws_secret, timestamp=authorized.url.parameters['Timestamp']).url.parameters['Signature']
@@ -529,8 +536,8 @@ class AWSAuthTests(AWSTests):
         request = self.signed_request()
         entity = self.authenticator.authenticate(request)
         authorized = self.authorizer.authorize(entity, request)
-        request.url = http.clone_url(request.url, host=settings.REMOTE_HOST)
-        request.headers = [header if header[0] != 'host' else ('host', settings.REMOTE_HOST) for header in request.headers]
+        request.url = http.clone_url(request.url, host=settings.remote_host)
+        request.headers = [header if header[0] != 'host' else ('host', settings.remote_host) for header in request.headers]
         self.assertEquals(
             authorized.url.parameters['Signature'],
             self.signed_request(request, key=self.aws_key, secret=self.aws_secret, timestamp=authorized.url.parameters['Timestamp']).url.parameters['Signature']
@@ -543,7 +550,7 @@ class AWSAuthTests(AWSTests):
         authorized = self.assertRaises(auth.UnauthorizedException, self.authorizer.authorize, entity, request)
 
 
-class CredentialTests(unittest.TestCase):
+class CredentialTests(unittest2.TestCase):
     pass
 
 
@@ -578,7 +585,7 @@ class MatcherTests(GGTestCase):
         self.assertTrue(policy.AnyMatcher([policy.NotMatcher(policy.AlwaysMatcher()), policy.AlwaysMatcher()]).matches(None, None))
 
 
-class KVStoreTests(unittest.TestCase):
+class KVStoreTests(unittest2.TestCase):
     def test_bad_backend_uri_raises(self):
         self.assertRaises(kvstore.InvalidKeyValueStoreBackend, kvstore.get_kvstore, '')
 
@@ -593,11 +600,14 @@ class KVStoreBackendTests(object):
     backend you want to test.
 
     """
-
+    
     @property
     def kvstore(self):
         if 'kvstore' not in self.__dict__:
-            self.__dict__['kvstore'] = kvstore.get_kvstore(self.backend)
+            try:
+                self.__dict__['kvstore'] = kvstore.get_kvstore(self.backend)
+            except kvstore.ImproperlyConfigured, e:
+                raise unittest2.SkipTest(str(e))
         return self.__dict__['kvstore']
 
     def wait(self):
@@ -625,21 +635,17 @@ class KVStoreBackendTests(object):
         self.assertTrue(self.kvstore.get('_') is None)
 
 
-# TODO: Check for dependencies for each backend, ignore tests if they're
-# not installed.
-
-
-class LocalMemoryKVStoreTests(unittest.TestCase, KVStoreBackendTests):
+class LocalMemoryKVStoreTests(unittest2.TestCase, KVStoreBackendTests):
     backend = 'locmem://'
 
 
-class MemcachedKVStoreTests(unittest.TestCase, KVStoreBackendTests):
+class MemcachedKVStoreTests(unittest2.TestCase, KVStoreBackendTests):
     backend = 'memcached://' + MEMCACHED_TEST_HOST
 
 
-class SimpleDBKVStoreTests(unittest.TestCase, KVStoreBackendTests):
+class SimpleDBKVStoreTests(unittest2.TestCase, KVStoreBackendTests):
     from goldengate import settings
-    backend = 'simpledb://' + SIMPLEDB_TEST_DOMAIN + '?aws_access_key=' + settings.AWS_KEY + '&aws_secret_access_key=' + settings.AWS_SECRET
+    backend = 'simpledb://' + SIMPLEDB_TEST_DOMAIN + '?aws_access_key=' + settings.aws_key + '&aws_secret_access_key=' + settings.aws_secret
 
     def wait(self):
         # TODO: Use SimpleDB consistency levels instead of sleeping.
@@ -648,5 +654,5 @@ class SimpleDBKVStoreTests(unittest.TestCase, KVStoreBackendTests):
 
 
 if __name__ == '__main__':
-    unittest.main()
+    unittest2.main()
 

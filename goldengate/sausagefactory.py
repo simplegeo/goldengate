@@ -17,11 +17,11 @@ class AuditTrail(object):
 
     @classmethod
     def sanitize(cls, record):
-        import settings
+        from goldengate import settings
         # HACK HACK HACK
         record = re.sub(cls.signature_pattern, 'Signature=XXX', record) # remove Signature, if there is one.
         record = re.sub(cls.authorization_pattern, '"authorization", "XXX"', record)
-        return record.replace(settings.AWS_SECRET, 'XXX') # just in case
+        return record.replace(settings.aws_secret, 'XXX') # just in case
 
     def format(self, entity, action):
         # Might also want an optional transaction identifier

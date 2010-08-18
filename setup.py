@@ -19,5 +19,9 @@ setup(
         'console_scripts': [
             'gg-new-credentials = goldengate:generate_credentials',
         ]
-    }
+    },
+    tests_require = [
+        'unittest2',
+    ],
+    test_suite='unittest2.collector',
 )

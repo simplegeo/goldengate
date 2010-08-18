@@ -188,8 +188,8 @@ class Authorizer(base.Authorizer):
     signature_method = SignatureMethod_HMAC_SHA256()
 
     def __init__(self, aws_key=None, aws_secret=None, *args, **kwargs):
-        self.aws_key = aws_key if aws_key is not None else settings.AWS_KEY
-        self.aws_secret = aws_secret if aws_secret is not None else settings.AWS_SECRET
+        self.aws_key = aws_key if aws_key is not None else settings.aws_key
+        self.aws_secret = aws_secret if aws_secret is not None else settings.aws_secret
         super(Authorizer, self).__init__(*args, **kwargs)
 
     def prepare(self, entity, request):

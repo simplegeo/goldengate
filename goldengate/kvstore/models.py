@@ -1,4 +1,4 @@
-from goldengate.kvstore import kvstore
+from goldengate import kvstore, settings
 
 
 class FieldError(Exception): pass
@@ -75,6 +75,7 @@ class ModelMetaclass(type):
 class Model(object):
 
     __metaclass__ = ModelMetaclass
+    storage_backend = kvstore.get_kvstore(settings.storage_backend)
 
     def __init__(self, **kwargs):
         for name, value in kwargs.items():
@@ -88,10 +89,10 @@ class Model(object):
 
     def save(self):
         d = self.to_dict()
-        kvstore.set(generate_key(self.__class__, self._get_pk_value()), d)
+        self.storage_backend.set(generate_key(self.__class__, self._get_pk_value()), d)
 
     def delete(self):
-        kvstore.delete(generate_key(self.__class__, self._get_pk_value()))
+        self.storage_backend.delete(generate_key(self.__class__, self._get_pk_value()))
 
     def _get_pk_value(self):
         return getattr(self, self.key_field)
@@ -112,7 +113,7 @@ class Model(object):
 
     @classmethod
     def get(cls, id):
-        fields = kvstore.get(generate_key(cls, id))
+        fields = cls.storage_backend.get(generate_key(cls, id))
         if fields is None:
             return None
         return cls.from_dict(fields)

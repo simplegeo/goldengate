@@ -1,5 +1,6 @@
 import time
 import uuid
+from . import settings
 from .notifications import Notification
 from .sausagefactory import AuditTrail
 try:
@@ -64,9 +65,7 @@ class Policy(object):
 
     @classmethod
     def for_request(self, entity, request, policies=None):
-        if policies is None:
-            import policies as _policies
-            policies = getattr(_policies, 'POLICIES', [])
+        policies = policies if policies is not None else settings.policies
         for policy in policies:
             if policy.applies_to(entity, request):
                 return policy
