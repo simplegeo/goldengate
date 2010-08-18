@@ -3,13 +3,13 @@ Section: python
 Priority: extra
 Maintainer: SimpleGeo Nerds <nerds@simplegeo.com>
 Uploaders: Paul Lathrop <paul@simplegeo.com>
-Build-Depends: cdbs, debhelper (>= 7), python, python-support, python-setuptools
+Build-Depends: cdbs, debhelper (>= 7), python, python-support, python-setuptools, python-coverage, python-nose, python-httplib2
 Standards-Version: 3.8.4
 Homepage: https://github.com/simplegeo/goldengate/tree/master/goldengate/
 
 Package: goldengate
 Architecture: all
-Depends: ${shlibs:Depends}, ${misc:Depends}, python, python-eventlet, python-greenlet, gunicorn, python-setuptools, python-setproctitle
+Depends: ${shlibs:Depends}, ${misc:Depends}, python, python-httplib2, python-eventlet, python-greenlet, gunicorn, python-setuptools, python-setproctitle
 Description: Golden Gate is a cloud gateway
  Golden Gate is a cloud gateway *whomp whomp*. More generally, it is a
  broker for an HTTP service that applies more granular authentication

@@ -2,7 +2,7 @@
 Tests are good.
 """
 
-import unittest2
+import unittest
 import urllib
 import time
 try:
@@ -10,6 +10,8 @@ try:
 except ImportError:
     from StringIO import StringIO
 from goldengate import goldengate, http, auth, policy, kvstore, credentials, settings, config
+
+from nose.plugins.skip import SkipTest
 
 
 SIMPLEDB_TEST_DOMAIN = 'goldengatetests' # This has to be created already.
@@ -71,7 +73,7 @@ class MockProxy(object):
         return self.response
 
 
-class GGTestCase(unittest2.TestCase):
+class GGTestCase(unittest.TestCase):
     """
     Base test case that defines a couple handy dandy helper assertions and other fun stuff.
     """
@@ -143,7 +145,7 @@ class GoldenGateTests(GGTestCase):
         self.assertRaises(auth.UnauthenticatedException, self.goldengate.handle, self.request)
 
 
-class ConfigTests(unittest2.TestCase):
+class ConfigTests(unittest.TestCase):
     def test_class_setting(self):
         setting = config.ClassSetting()
         setting.set('goldengate.auth.aws.Authorizer')
@@ -550,7 +552,7 @@ class AWSAuthTests(AWSTests):
         authorized = self.assertRaises(auth.UnauthorizedException, self.authorizer.authorize, entity, request)
 
 
-class CredentialTests(unittest2.TestCase):
+class CredentialTests(unittest.TestCase):
     pass
 
 
@@ -585,7 +587,7 @@ class MatcherTests(GGTestCase):
         self.assertTrue(policy.AnyMatcher([policy.NotMatcher(policy.AlwaysMatcher()), policy.AlwaysMatcher()]).matches(None, None))
 
 
-class KVStoreTests(unittest2.TestCase):
+class KVStoreTests(unittest.TestCase):
     def test_bad_backend_uri_raises(self):
         self.assertRaises(kvstore.InvalidKeyValueStoreBackend, kvstore.get_kvstore, '')
 
@@ -607,7 +609,7 @@ class KVStoreBackendTests(object):
             try:
                 self.__dict__['kvstore'] = kvstore.get_kvstore(self.backend)
             except kvstore.ImproperlyConfigured, e:
-                raise unittest2.SkipTest(str(e))
+                raise SkipTest(str(e))
         return self.__dict__['kvstore']
 
     def wait(self):
@@ -635,15 +637,15 @@ class KVStoreBackendTests(object):
         self.assertTrue(self.kvstore.get('_') is None)
 
 
-class LocalMemoryKVStoreTests(unittest2.TestCase, KVStoreBackendTests):
+class LocalMemoryKVStoreTests(unittest.TestCase, KVStoreBackendTests):
     backend = 'locmem://'
 
 
-class MemcachedKVStoreTests(unittest2.TestCase, KVStoreBackendTests):
+class MemcachedKVStoreTests(unittest.TestCase, KVStoreBackendTests):
     backend = 'memcached://' + MEMCACHED_TEST_HOST
 
 
-class SimpleDBKVStoreTests(unittest2.TestCase, KVStoreBackendTests):
+class SimpleDBKVStoreTests(unittest.TestCase, KVStoreBackendTests):
     from goldengate import settings
     backend = 'simpledb://' + SIMPLEDB_TEST_DOMAIN + '?aws_access_key=' + settings.aws_key + '&aws_secret_access_key=' + settings.aws_secret
 
@@ -654,5 +656,5 @@ class SimpleDBKVStoreTests(unittest2.TestCase, KVStoreBackendTests):
 
 
 if __name__ == '__main__':
-    unittest2.main()
+    unittest.main()
 

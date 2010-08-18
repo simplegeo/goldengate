@@ -33,7 +33,7 @@ setup(
         ]
     },
     tests_require = [
-        'unittest2',
+        'nose',
     ],
     test_suite='unittest2.collector',
 )
