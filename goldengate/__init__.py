@@ -16,7 +16,7 @@ settings = config.Config()
 
 # Try loading custom configuration
 def load_config():
-    filename = os.environ.get('GOLDENGATE_PATH')
+    filename = os.environ.get('GOLDENGATE_CONFIG')
 
     # Load up the config file if its found.
     if filename is None:
