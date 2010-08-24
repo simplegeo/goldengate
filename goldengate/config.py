@@ -65,7 +65,12 @@ class ClassSetting(Setting):
 
 class Auditor(ClassSetting):
     name = 'auditor'
-    default = 'goldengate.sausagefactory.AuditTrail'
+    default = 'goldengate.sausagefactory.LogAuditTrail'
+
+
+class AuditorArgs(Setting):
+    name = 'audit_args'
+    default = []
 
 
 class RemoteHost(Setting):

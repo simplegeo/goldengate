@@ -1,10 +1,19 @@
+# -*- coding: utf-8 -*-
+#
+# © 2010 SimpleGeo, Inc. All rights reserved.
+# Author: Mike Malone <mike@simplegeo.com>
+# Author: Ian Eure <ian@simplegeo.com>
+#
+
 """
 Things go into sausage factory but they don't come back out.
 """
+
 from __future__ import with_statement
 import fcntl
 import re
 import time
+import logging
 try:
     import simplejson as json
 except ImportError:
@@ -29,6 +38,17 @@ class AuditTrail(object):
 
     def record(self, entity, action):
         print self.format(entity, action)
+
+
+class LogAuditTrail(AuditTrail):
+
+    """Use logging to log."""
+
+    def __init__(self, logger=None):
+        self.logger = logger or logging
+
+    def record(self, entity, action):
+        self.logger.info(self.format(entity, action))
 
 
 class FileAuditTrail(AuditTrail):
