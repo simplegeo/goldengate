@@ -16,3 +16,5 @@ goldengate/local_settings.py
 /debian/*.debhelper
 /debian/*.substvars
 /debian/*stampdir*
+/.coverage
+/htmlcov
