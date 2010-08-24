@@ -4,11 +4,9 @@
 
 
 import httplib2
-from urlparse import urljoin
 from . import settings
-from .credentials import StaticCredentialStore, Credential
-from .http import Request, Response, HTTPException, clone_url
-from .sausagefactory import AuditTrail
+from .credentials import Credential
+from .http import Request, Response, HTTPException
 from .auth import aws
 
 
