@@ -69,7 +69,7 @@ class Auditor(ClassSetting):
 
 
 class AuditorArgs(Setting):
-    name = 'audit_args'
+    name = 'auditor_args'
     default = []
 
 

@@ -31,7 +31,7 @@ class GoldenGate(object):
         credentials = [Credential(*credential) for credential in settings.credentials]
         self.authenticator = authenticator(settings.credential_store(credentials))
         self.authorizer = authorizer()
-        self.auditor = auditor()
+        self.auditor = auditor(*settings.auditor_args)
         self.proxy = proxy()
 
     def manage(self, request):
