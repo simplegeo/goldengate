@@ -26,6 +26,7 @@ setup(
     provides=['goldengate'],
     install_requires=[
         'httplib2',
+        'simplejson',
     ],
     entry_points = {
         'console_scripts': [
