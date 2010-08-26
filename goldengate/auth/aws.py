@@ -97,10 +97,15 @@ class Request(http.Request):
                             if k != 'Signature'])
 
     def get_normalized_http_method(self):
-        return settings.remote_host.split(':')[0]
+        return self.method
 
     def get_normalized_http_host(self):
-        return settings.remote_host
+        host = self.url.host.lower()
+        scheme = self.url.scheme.lower()
+        if scheme == 'http' and host.endswith(':80') or \
+           scheme == 'https' and host.endswith(':443'):
+            host = ''.join(host.split(':')[:-1])
+        return host
 
     def get_normalized_http_path(self):
         # For an empty path use '/'
