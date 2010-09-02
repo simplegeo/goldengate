@@ -85,10 +85,22 @@ class GGTestCase(unittest.TestCase):
         self.assertEquals(exception.body, body)
         response = exception.to_response()
         self.assertEquals(response.status, status)
+
+        dhead = dict(response.headers)
+        self.assert_('Content-Length' in dhead)
+        self.assert_(len(body) == dhead['Content-Length'])
+        del dhead['Content-Length']
+        response.headers = dhead.items()
+
         self.assertEquals(response.headers, headers)
         self.assertEquals(response.body, body)
         start_response = StartResponse()
-        self.assertEquals(response.send(start_response), body)
+        response_body = response.send(start_response)
+        self.assert_(isinstance(response_body, type(iter([]))))
+        response_body = list(response_body)
+        self.assert_(len(response_body) == 1)
+        response_body = response_body[0]
+        self.assertEquals(response_body, body)
         self.assertEquals(start_response.status, '%d %s' % (status, http.STATUS_CODES.get(status)))
         self.assertEquals(start_response.headers, headers)
 
@@ -260,10 +272,10 @@ class HttpTests(GGTestCase):
 
     def test_dict_or_list_of_headers(self):
         request = http.Response(200, [('x-spirit-animal', 'kangaroo')], '')
-        self.assertEquals(len(request.headers), 1)
+        self.assertEquals(len(request.headers), 2)
         self.assertEquals(dict(request.headers)['x-spirit-animal'], 'kangaroo')
         request = http.Response(200, {'x-spirit-animal': 'kangaroo'}, '')
-        self.assertEquals(len(request.headers), 1)
+        self.assertEquals(len(request.headers), 2)
         self.assertEquals(dict(request.headers)['x-spirit-animal'], 'kangaroo')
 
     def test_clone_request(self):
@@ -298,7 +310,12 @@ class HttpTests(GGTestCase):
         start_response = StartResponse()
 
         response = http.Response(headers=headers, body=body)
-        self.assertEquals(response.send(start_response), body)
+        response_body = response.send(start_response)
+        self.assert_(isinstance(response_body, type(iter([]))))
+        response_body = list(response_body)
+        self.assert_(len(response_body) == 1)
+        response_body = response_body[0]
+        self.assertEquals(response_body, body)
         self.assertEquals(start_response.status, '200 OK')
         self.assertEquals(len(start_response.headers), len(headers))
         for name, value in headers:
@@ -349,6 +366,8 @@ class ProxyTests(GGTestCase):
             self.assertEquals(proxy.http.headers[key], value)
         self.assertEquals(proxy.http.body, request.body)
         for key, value in response.headers:
+            if key == 'Content-Length':
+                continue
             self.assertEquals(proxy.http.response[key], value)
         self.assertEquals(response.body, proxy.http.content)
 
