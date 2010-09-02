@@ -192,21 +192,20 @@ class Response(object):
     response body.
 
     """
+    charset = "utf-8"
 
     def __init__(self, status=200, headers=None, body=''):
         self.status = status
         if isinstance(headers, dict):
             headers = headers.items()
         self.headers = headers if headers is not None else []
-        self.body = body
+        self.body = unicode(body).encode(self.charset)
+        self.headers += [['Content-Length', len(self.body)]]
 
     def send(self, start_response):
         status = '%d %s' % (self.status, STATUS_CODES.get(self.status))
         start_response(status, self.headers)
-        if isinstance(self.body, unicode):
-            return self.body.encode(self.charset)
-        else:
-            return self.body
+        return iter([self.body])
 
     @classmethod
     def encode_headers(cls, headers):
