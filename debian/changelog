@@ -1,3 +1,17 @@
+goldengate (1.0.18) lucid; urgency=low
+
+  [ Ian Eure ]
+  * Always use remote_host in aws.Request.
+  * Revert "Always use remote_host in aws.Request." This reverts commit
+    d179ab36ac03bbec70d980d1bafb07ca56f3d450.
+  * Fix charset issues, encode body in Response.__init__, add content-
+    length header.
+  * Fix tests.
+
+  [ SimpleGeo Nerds ]
+
+ -- SimpleGeo Nerds <nerds@simplegeo.com>  Thu, 02 Sep 2010 23:10:59 +0000
+
 goldengate (1.0.16) lucid; urgency=low
 
   [ Ian Eure ]
